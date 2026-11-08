@@ -13,6 +13,15 @@
 3. Configure a two-week free introductory offer for both products and complete availability, localisation and review metadata. StoreKit supplies the storefront price and confirms trial eligibility. Google login is deferred.
 4. For scanner testing, obtain the App Store Server API in-app purchase key, key ID and issuer ID. Keep these in Cloudflare.
 
+## TestFlight v0.2 build 11 findings (2026-11-08)
+
+- The iPhone welcome screen renders and Sign in with Apple presents successfully. Sign out appears after authentication, but the app still requires a **verified StoreKit subscription** before opening the tracker.
+- Both monthly and yearly prices currently display as **Unavailable** because StoreKit did not return the configured product identifiers. This is not corrected by adding another login method. Check that the products exist in App Store Connect, are in one subscription group, have matching IDs and durations, UK prices, availability, localisation, metadata, and eligible 2-week introductory offers. Verify the Paid Apps Agreement and subscription status. After changing metadata, allow sandbox propagation before retesting.
+- Commit `670a048` lets testers choose monthly or yearly even when prices are pending; the Subscribe button remains disabled until real StoreKit products load. This fix requires a **new** build to appear on iPhone.
+- An email/password account option was requested as a future addition. Implement it only with a trustworthy hosted identity provider, email verification, secure reset/recovery, privacy/deletion controls, and server-side entitlement validation. Do **not** store passwords locally, emulate logins, or grant premium access without verified Apple subscription. Apple login remains the only working identity method until a backend is configured.
+- AI scanning is **not yet live**. A deployed Cloudflare backend, owner-approved sandbox secrets, configured `PM_SCANNER_URL`, test-linked Apple purchase, and explicit `SCANS_ENABLED` approval are required. Do not activate OpenAI billing or public AI scanning by default.
+- Before claiming success, verify actual StoreKit product retrieval, purchase/trial via a sandbox TestFlight account, entry into tracker, then a safe closed-beta scan against the Worker. No steps here authorize deployment or uploads.
+
 ## Codemagic
 
 1. Run `primalmacro-ios-check` on the PR branch. It runs the Swift nutrition test, Node Worker tests and unsigned simulator build.
