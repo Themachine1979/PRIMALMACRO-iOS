@@ -232,6 +232,7 @@ struct MembershipGateView: View {
 private struct MembershipLandingView: View {
     @EnvironmentObject private var member: AppleMemberSession
     @EnvironmentObject private var plans: MembershipPlans
+    @State private var scannerChallenge: String?
 
     var body: some View {
         ScrollView {
@@ -284,7 +285,16 @@ private struct MembershipLandingView: View {
                 .background(PM.surface, in: RoundedRectangle(cornerRadius: 18))
 
                 if !member.signedIn {
-                    SignInWithAppleButton(.signIn, onRequest: { _ in }, onCompletion: member.completeAppleSignIn)
+                    SignInWithAppleButton(.signIn, onRequest: { request in
+                        // Use the same Apple confirmation for the app and AI scanner.
+                        // The challenge comes from our server and is verified before use.
+                        if let scannerChallenge { request.nonce = scannerChallenge }
+                    }, onCompletion: { result in
+                        member.completeAppleSignIn(result)
+                        if let scannerChallenge {
+                            Task { await establishScannerSession(result, nonce: scannerChallenge) }
+                        }
+                    })
                         .signInWithAppleButtonStyle(.white)
                         .frame(height: 54)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -342,6 +352,29 @@ private struct MembershipLandingView: View {
             .frame(maxWidth: .infinity)
         }
         .background(PM.background)
+        .task {
+            guard ScannerService.endpoint != nil else { return }
+            // Failure here never prevents Apple account sign-in or purchasing.
+            scannerChallenge = try? await ScanClient.challenge()
+        }
+    }
+
+    @MainActor
+    private func establishScannerSession(_ result: Result<ASAuthorization, Error>, nonce: String) async {
+        guard member.signedIn,
+              let authorization = try? result.get(),
+              let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+              credential.user == member.userID,
+              let data = credential.identityToken,
+              let idToken = String(data: data, encoding: .utf8) else { return }
+        do {
+            let verified = try await ScanClient.session(identityToken: idToken, nonce: nonce)
+            guard member.signedIn, credential.user == member.userID else { return }
+            try verified.save()
+        } catch {
+            // Keep ordinary login/purchasing functional if scanner backend is offline.
+            // The scanner will offer secure retry on first attempted analysis.
+        }
     }
 
     @ViewBuilder
