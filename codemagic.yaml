@@ -29,3 +29,41 @@ workflows:
     artifacts:
       - build/DerivedData/Build/Products/Debug-iphonesimulator/*.app
       - /tmp/xcodebuild_logs/*.log
+
+  primalmacro-ios-testflight:
+    name: PRIMALMACRO - signed TestFlight upload
+    max_build_duration: 90
+    instance_type: mac_mini_m2
+    # This integration name must exactly match the API key name in
+    # Codemagic Team settings > Team integrations > Developer Portal.
+    integrations:
+      app_store_connect: PRIMALMACRO_APPLE
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: uk.themachine1979.primalmacro
+      xcode: latest
+    scripts:
+      - name: Verify PRIMALMACRO project exists
+        script: |
+          test -f "$CM_BUILD_DIR/PRIMALMACRO.xcodeproj/project.pbxproj" || {
+            echo "Missing native Xcode project in repository root."
+            exit 1
+          }
+      - name: Apply Apple distribution provisioning profile
+        script: xcode-project use-profiles
+      - name: Create signed iPhone IPA
+        script: |
+          xcode-project build-ipa \
+            --project "$CM_BUILD_DIR/PRIMALMACRO.xcodeproj" \
+            --scheme "PRIMALMACRO"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        # Upload to App Store Connect/TestFlight processing only.
+        # Do not submit for public App Store review or external beta review.
+        submit_to_testflight: false
+        submit_to_app_store: false
