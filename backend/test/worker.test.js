@@ -213,6 +213,7 @@ test('Apple signature, nonce, replay, live entitlement and quotas gate the only 
     expiresDate: Date.now() + 60000
   };
   let status = 1;
+  let storeHTTPStatus = 200;
   let aiCalls = 0;
   t.mock.method(globalThis, 'fetch', async (url, options) => {
     if (url === 'https://appleid.apple.com/auth/keys') {
@@ -221,6 +222,7 @@ test('Apple signature, nonce, replay, live entitlement and quotas gate the only 
     }
     if (url === 'https://api.storekit-sandbox.apple.com/inApps/v1/subscriptions/123') {
       assert.equal(options.redirect, 'manual');
+      if (storeHTTPStatus !== 200) return new Response('do not expose App Store API response', { status: storeHTTPStatus });
       const [header, claims, signature] = options.headers.authorization.slice(7).split('.');
       assert.equal(JSON.parse(Buffer.from(claims, 'base64url')).bid, bundleID);
       assert.equal(await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, appStoreKey.publicKey,
@@ -278,6 +280,28 @@ test('Apple signature, nonce, replay, live entitlement and quotas gate the only 
   assert.equal((await worker.fetch(request('session', { nonce, identityToken }), env)).status, 401);
   assert.equal((await worker.fetch(request('scan', { ...scan, mode: 'invalid' }, token), env)).status, 400);
   assert.equal((await worker.fetch(request('scan', { ...scan, imageBase64: 'x'.repeat(2_801_025) }, token), env)).status, 413);
+  // Fail closed with a safe, fixed diagnostic when a malformed App Store key
+  // or an upstream HTTP error prevents subscription verification.
+  const diagnosticWarnings = [];
+  const diagnosticMock = t.mock.method(console, 'warn', line => diagnosticWarnings.push(line));
+  const originalPrivateKey = env.APP_STORE_PRIVATE_KEY;
+  env.APP_STORE_PRIVATE_KEY = 'not-a-valid-p8-key';
+  const badKey = await worker.fetch(request('scan', scan, token), env);
+  assert.equal(badKey.status, 503);
+  assert.equal((await badKey.json()).code, 'SCANNER_SERVICE_UNAVAILABLE');
+  assert.deepEqual(diagnosticWarnings, ['PM_SCAN_STAGE: APP_STORE_JWT_SIGNING']);
+  assert.equal(JSON.stringify(diagnosticWarnings).includes(env.APP_STORE_PRIVATE_KEY), false);
+  env.APP_STORE_PRIVATE_KEY = originalPrivateKey;
+  diagnosticWarnings.length = 0;
+  storeHTTPStatus = 401;
+  const badHTTP = await worker.fetch(request('scan', scan, token), env);
+  assert.equal(badHTTP.status, 503);
+  assert.equal((await badHTTP.json()).code, 'SCANNER_SERVICE_UNAVAILABLE');
+  assert.deepEqual(diagnosticWarnings, ['PM_SCAN_STAGE: APP_STORE_HTTP_401']);
+  assert.equal(JSON.stringify(diagnosticWarnings).includes('do not expose App Store'), false);
+  storeHTTPStatus = 200;
+  diagnosticMock.mock.restore();
+  assert.equal(aiCalls, 0);
   tx.appAccountToken = await accountToken('another-user');
   assert.equal((await worker.fetch(request('scan', scan, token), env)).status, 403);
   tx.appAccountToken = tokenForUser;
