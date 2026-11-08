@@ -1,9 +1,10 @@
 import SwiftUI
+import UIKit
 
 struct PlanView: View {
     @EnvironmentObject private var store: AppStore
+    @EnvironmentObject private var member: AppleMemberSession
     @State private var showEdit = false
-    @State private var showScannerSettings = false
     @State private var showDeleteAlert = false
 
     var body: some View {
@@ -43,19 +44,24 @@ struct PlanView: View {
                 }
                 VStack(spacing: 10) {
                     settingsButton("Edit profile & goal", icon: "person.crop.circle") { showEdit = true }
-                    settingsButton("Configure AI scanner", icon: "camera.metering.matrix") { showScannerSettings = true }
+                    settingsButton("Manage subscription", icon: "creditcard.fill") {
+                        if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
+                            UIApplication.shared.open(url)
+                        }
+                    }
+                    settingsButton("Sign out of Apple account", icon: "rectangle.portrait.and.arrow.right") { member.signOut() }
                     settingsButton("Delete all local data", icon: "trash") { showDeleteAlert = true }
                 }
                 PMPanel {
                     VStack(alignment: .leading, spacing: 7) {
                         Text("PRIVATE BY DESIGN").font(.caption.weight(.heavy)).foregroundStyle(PM.orange)
-                        Text("Food diary, body measurements and profile stay on this iPhone. Only images you choose to scan are sent to your configured AI service. No account or cloud sync in v0.1.")
+                        Text("Food diary, body measurements and profile stay on this iPhone. Images are sent to the PRIMALMACRO AI service only when you choose to analyse them. No cross-device sync yet.")
                             .font(.caption).foregroundStyle(PM.secondary)
                         Text("For adults 18+. Not for treating medical conditions or prescribing diets.")
                             .font(.caption).foregroundStyle(PM.secondary)
                     }
                 }
-                Text("PRIMALMACRO v0.1 • Build 1")
+                Text("PRIMALMACRO v0.2")
                     .font(.caption2.weight(.medium)).foregroundStyle(PM.secondary)
                     .frame(maxWidth: .infinity)
             }
@@ -64,7 +70,6 @@ struct PlanView: View {
         }
         .background(PM.background)
         .sheet(isPresented: $showEdit) { EditProfileView() }
-        .sheet(isPresented: $showScannerSettings) { ScannerSettingsView() }
         .confirmationDialog("Delete your diary, profile and weight records from this phone?",
                             isPresented: $showDeleteAlert, titleVisibility: .visible) {
             Button("Delete all local data", role: .destructive) { store.clearAllData() }
