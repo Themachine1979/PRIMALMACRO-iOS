@@ -111,3 +111,101 @@ workflows:
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
+
+  # MANUAL OPT-IN: do not run without explicit owner approval.
+  primalmacro-ios-upload-internal:
+    name: PRIMALMACRO - upload to App Store Connect (manual)
+    max_build_duration: 90
+    instance_type: mac_mini_m2
+    # This integration name must exactly match the API key name in
+    # Codemagic account settings > Developer Portal integrations.
+    inputs:
+      buildNumber:
+        description: Unused PRIMALMACRO iOS build number from App Store Connect
+        type: number
+      approveUpload:
+        description: I approve uploading this newly built IPA to App Store Connect
+        type: boolean
+        default: false
+    integrations:
+      app_store_connect: "PRIMALMACRO Codemagic"
+    environment:
+      vars:
+        PM_BUILD_NUMBER: "${{ inputs.buildNumber }}"
+        PM_UPLOAD_APPROVED: "${{ inputs.approveUpload }}"
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: uk.themachine1979.primalmacro
+      xcode: latest
+    scripts:
+      - name: Require explicit App Store Connect upload approval
+        script: |
+          case "${PM_UPLOAD_APPROVED:-false}" in
+            true|True|TRUE) echo "Upload approved for this manually started build." ;;
+            *) echo "Upload approval is not checked. No IPA will be built or uploaded."; exit 1 ;;
+          esac
+      - name: Verify PRIMALMACRO project exists
+        script: |
+          test -f "$CM_BUILD_DIR/PRIMALMACRO.xcodeproj/project.pbxproj" || {
+            echo "Missing native Xcode project in repository root."
+            exit 1
+          }
+      - name: Set build number and optional AI scanner endpoint
+        script: |
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+          url = os.environ.get("PM_SCANNER_URL", "").strip()
+          project = Path("PRIMALMACRO.xcodeproj/project.pbxproj")
+          source = project.read_text()
+          build = os.environ.get("PM_BUILD_NUMBER", "")
+          if not re.fullmatch(r"[1-9][0-9]*", build):
+              raise SystemExit("Enter an unused positive whole number in the Codemagic build number field")
+          source, count = re.subn(r"CURRENT_PROJECT_VERSION = [0-9]+;", f"CURRENT_PROJECT_VERSION = {build};", source)
+          if count != 2:
+              raise SystemExit("Expected build number in both Xcode configurations")
+          if url and not re.fullmatch(r"https://[a-zA-Z0-9.-]+/scan", url):
+              raise SystemExit("PM_SCANNER_URL must be a full HTTPS URL ending in /scan")
+          placeholder = "PM_SCANNER_ENDPOINT_PLACEHOLDER"
+          if source.count(placeholder) != 2:
+              raise SystemExit("Expected scanner placeholder in both Xcode configurations")
+          project.write_text(source.replace(placeholder, url))
+          PY
+      - name: Apply Apple distribution provisioning profile
+        script: |
+          xcode-project use-profiles --custom-export-options='{"testFlightInternalTestingOnly": true}'
+      - name: Create signed iPhone IPA
+        script: |
+          if xcode-project build-ipa --disable-xcpretty \
+            --project "$CM_BUILD_DIR/PRIMALMACRO.xcodeproj" \
+            --scheme "PRIMALMACRO"; then
+            exit 0
+          else
+            archive_status=$?
+            echo "Xcode diagnostics from /tmp/xcodebuild_logs"
+            found_log=false
+            for log in /tmp/xcodebuild_logs/PRIMALMACRO*.log; do
+              [ -f "$log" ] || continue
+              found_log=true
+              echo "--- $log ---"
+              grep -niE '(^|[[:space:]])(fatal )?error:|provisioning profile.*(doesn.t|does not|missing|expired)|\*\* (ARCHIVE|EXPORT) FAILED \*\*' "$log" | head -n 30 || true
+            done
+            if [ "$found_log" = false ]; then
+              echo "No raw Xcode log was found."
+            fi
+            exit "$archive_status"
+          fi
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    # This workflow has NO automatic triggers. It uploads to Apple only when the
+    # owner selects it manually AND ticks the approval input for that build.
+    publishing:
+      app_store_connect:
+        auth: integration
+        # Upload the IPA only; do not submit to beta review or App Store review.
+        # Assignment to a named internal TestFlight tester group is done by the owner.
+        submit_to_testflight: false
+        submit_to_app_store: false
