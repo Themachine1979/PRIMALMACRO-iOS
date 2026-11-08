@@ -49,6 +49,8 @@ workflows:
     integrations:
       app_store_connect: "PRIMALMACRO Codemagic"
     environment:
+      groups:
+        - primalmacro_scanner
       vars:
         PM_BUILD_NUMBER: "${{ inputs.buildNumber }}"
       ios_signing:
@@ -130,6 +132,8 @@ workflows:
     integrations:
       app_store_connect: "PRIMALMACRO Codemagic"
     environment:
+      groups:
+        - primalmacro_scanner
       vars:
         PM_BUILD_NUMBER: "${{ inputs.buildNumber }}"
         PM_UPLOAD_APPROVED: "${{ inputs.approveUpload }}"
