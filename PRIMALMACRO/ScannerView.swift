@@ -130,8 +130,8 @@ struct ScannerView: View {
                 if configured && !canScan {
                     Text(ScanError.subscriptionRequired.localizedDescription)
                         .font(.footnote).foregroundStyle(PM.secondary)
-                } else if configured && session == nil {
-                    if let nonce {
+                } else if configured {
+                    if let nonce, session == nil {
                         SignInWithAppleButton(.continue, onRequest: { request in
                             request.nonce = nonce
                         }, onCompletion: { result in
@@ -140,22 +140,18 @@ struct ScannerView: View {
                         .signInWithAppleButtonStyle(.white)
                         .frame(height: 52)
                         .disabled(confirming)
-                        Text("Confirm your Apple sign-in to unlock AI scanning.")
+                        Text("Confirm with Apple once to complete your scan. No API keys or scanner setup required.")
                             .font(.footnote).foregroundStyle(PM.secondary)
                     } else {
-                        PMLargeButton(title: "ENABLE AI SCANNING", icon: "lock.open", enabled: !confirming) {
-                            Task { await prepareSignIn() }
-                        }
-                    }
-                } else if configured {
-                    Text("Analyse with AI sends this photo to OpenAI for nutrition analysis.")
-                        .font(.footnote).foregroundStyle(PM.secondary)
-                    PMLargeButton(title: isAnalyzing ? "ANALYSING PHOTO..." : "ANALYSE WITH AI",
-                                  icon: "sparkles", enabled: image != nil && !isAnalyzing && !importingPhoto) {
-                        if photoConsent {
-                            Task { await analyze() }
-                        } else {
-                            showPhotoConsent = true
+                        Text("Scan with AI uses your signed-in PRIMALMACRO membership. A secure Apple confirmation may be required the first time.")
+                            .font(.footnote).foregroundStyle(PM.secondary)
+                        PMLargeButton(title: isAnalyzing ? "ANALYSING PHOTO..." : confirming ? "CONNECTING SECURELY..." : "ANALYSE WITH AI",
+                                      icon: "sparkles", enabled: image != nil && !isAnalyzing && !importingPhoto && !confirming) {
+                            if photoConsent {
+                                Task { await beginAnalysis() }
+                            } else {
+                                showPhotoConsent = true
+                            }
                         }
                     }
                 }
@@ -222,7 +218,7 @@ struct ScannerView: View {
         .alert("Send this photo to OpenAI?", isPresented: $showPhotoConsent) {
             Button("Allow and analyse") {
                 photoConsent = true
-                Task { await analyze() }
+                Task { await beginAnalysis() }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -269,6 +265,19 @@ struct ScannerView: View {
     }
 
     @MainActor
+    private func beginAnalysis() async {
+        guard configured, canScan, image != nil, !isAnalyzing, !importingPhoto, !confirming else { return }
+        if let current = session, current.expiresAt > Date().timeIntervalSince1970 {
+            await analyze()
+        } else {
+            // Expired or missing scanner sessions never bypass Apple verification.
+            ScannerSession.clear()
+            session = nil
+            await prepareSignIn()
+        }
+    }
+
+    @MainActor
     private func prepareSignIn() async {
         guard !confirming else { return }
         confirming = true
@@ -287,6 +296,10 @@ struct ScannerView: View {
         guard !confirming else { return }
         confirming = true
         defer { confirming = false }
+        guard self.nonce == nonce else {
+            errorMessage = "Your secure request expired. Tap Analyse with AI to try again."
+            return
+        }
         self.nonce = nil
         errorMessage = nil
         do {
@@ -300,12 +313,16 @@ struct ScannerView: View {
                 throw ScanError.signInRequired
             }
             let verified = try await ScanClient.session(identityToken: identityToken, nonce: nonce)
-            guard member.signedIn, credential.user == member.userID else { return }
+            guard member.signedIn, credential.user == member.userID else {
+                throw ScanError.signInRequired
+            }
             try verified.save()
             session = verified
+            // Do not send the user back to Enable or make them press Analyse twice.
+            await analyze()
         } catch {
             if (error as NSError).code != ASAuthorizationError.canceled.rawValue {
-                errorMessage = error.localizedDescription
+                errorMessage = "Apple confirmation did not complete: \(error.localizedDescription). Tap Analyse with AI to retry."
             }
         }
     }
@@ -339,7 +356,7 @@ struct ScannerView: View {
         } catch ScanError.signInRequired {
             ScannerSession.clear()
             self.session = nil
-            errorMessage = ScanError.signInRequired.localizedDescription
+            errorMessage = "Your secure session expired. Tap Analyse with AI to confirm with Apple again."
         } catch {
             errorMessage = error.localizedDescription
         }
