@@ -83,7 +83,7 @@ workflows:
           xcode-project use-profiles --custom-export-options='{"testFlightInternalTestingOnly": true}'
       - name: Create signed iPhone IPA
         script: |
-          xcode-project build-ipa \
+          xcode-project build-ipa --disable-xcpretty \
             --project "$CM_BUILD_DIR/PRIMALMACRO.xcodeproj" \
             --scheme "PRIMALMACRO"
     artifacts:
