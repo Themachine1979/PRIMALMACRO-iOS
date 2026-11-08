@@ -147,6 +147,30 @@ test('failed Apple public-key lookup returns a safe diagnostic without leaking t
   assert.equal(JSON.stringify(details).includes(unverifiedToken), false);
 });
 
+test('Apple public-key HTTP failure reports status only, never response body or credentials', async t => {
+  const { env, db } = fixture();
+  t.after(() => db.close());
+  const warningLines = [];
+  t.mock.method(console, 'warn', line => warningLines.push(line));
+  const started = await worker.fetch(request('challenge'), env);
+  const { nonce } = await started.json();
+  const iat = Math.floor(Date.now() / 1000);
+  const identityToken = segment({ alg: 'RS256', kid: 'unknown' }) + '.' +
+    segment({ iss: 'https://appleid.apple.com', aud: bundleID, sub: 'test',
+      iat, exp: iat + 300, nonce }) + '.AAAA';
+  t.mock.method(globalThis, 'fetch', async () =>
+    new Response('SECRET_BODY_NOT_FOR_LOGS', { status: 403 }));
+  const reply = await worker.fetch(request('session', { nonce, identityToken }), env);
+  assert.equal(reply.status, 503);
+  assert.equal((await reply.json()).code, 'APPLE_KEYS_UNAVAILABLE');
+  assert.deepEqual(warningLines, [
+    'PM_APPLE_KEYS_DETAIL: HTTP_403',
+    'PM_SESSION_STAGE: APPLE_PUBLIC_KEYS'
+  ]);
+  assert.equal(JSON.stringify(warningLines).includes(identityToken), false);
+  assert.equal(JSON.stringify(warningLines).includes('SECRET_BODY_NOT_FOR_LOGS'), false);
+});
+
 test('Apple signature, nonce, replay, live entitlement and quotas gate the only OpenAI call', async t => {
   const { env, db } = fixture();
   t.after(() => db.close());
