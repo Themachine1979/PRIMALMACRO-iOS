@@ -1,20 +1,27 @@
 name = "primalmacro-scanner"
 main = "src/worker.js"
 compatibility_date = "2026-10-01"
+preview_urls = false
 
-# The OpenAI key is an owner-only Cloudflare secret:
-# npx wrangler secret put OPENAI_API_KEY
-
-# This switch is OFF by default. Enable beta scans only after configuring
-# Cloudflare rate limits, API cost limits and a dedicated OpenAI project.
 [vars]
-BETA_SCANS_ENABLED = "false"
+SCANS_ENABLED = "false"
+APP_STORE_ENVIRONMENT = "Sandbox"
+SCAN_USER_DAILY_LIMIT = "3"
+SCAN_DAILY_LIMIT = "25"
+SCAN_TOTAL_LIMIT = "5"
 
-# Approximate 4 requests/minute per connecting IP, separately per Cloudflare location.
-# This is for a small TestFlight beta, NOT production subscription enforcement.
+# Approximate POP-local throttle. Durable Object quotas are authoritative.
 [[ratelimits]]
 name = "SCAN_RATE_LIMIT"
 namespace_id = "1901"
   [ratelimits.simple]
-  limit = 4
+  limit = 10
   period = 60
+
+[[durable_objects.bindings]]
+name = "SCAN_STATE"
+class_name = "ScanState"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ScanState"]

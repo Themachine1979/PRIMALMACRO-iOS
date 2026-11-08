@@ -6,6 +6,7 @@
   objects = {
 
 /* Begin PBXBuildFile section */
+    B10000000000000000000003 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000004 /* PrivacyInfo.xcprivacy */; };
     B10000000000000000000001 /* MembershipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* MembershipView.swift */; };
     52EB1EBDECFA0F252328F50A /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EB0F3EB7EE9FECCC403D934 /* AppStore.swift */; };
     16F7B2CC4ABB9BAD0B1834B9 /* Design.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBE28C419942BEA9F20CDA12 /* Design.swift */; };
@@ -25,6 +26,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+    B10000000000000000000004 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+    B10000000000000000000005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
     B10000000000000000000002 /* MembershipView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MembershipView.swift; sourceTree = "<group>"; };
     4EB0F3EB7EE9FECCC403D934 /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
     CBE28C419942BEA9F20CDA12 /* Design.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Design.swift; sourceTree = "<group>"; };
@@ -67,6 +70,8 @@
       633799881B3383D1411A5B79 /* ScanClient.swift */,
       9A9CE8553A1ECDF772344D03 /* ScannerView.swift */,
       5DB17CAB5299B3CE0FA8849A /* Assets.xcassets */,
+      B10000000000000000000004 /* PrivacyInfo.xcprivacy */,
+      B10000000000000000000005 /* Info.plist */,
     ); path = PRIMALMACRO; sourceTree = "<group>"; };
     4C90435B9C2A68F28C1039D7 /* Products */ = {isa = PBXGroup; children = (2F523E88044CECE9D38F25B9 /* PRIMALMACRO.app */, ); name = Products; sourceTree = "<group>"; };
 /* End PBXGroup section */
@@ -106,7 +111,7 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-    9329A539F308EBCD827166C4 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (3133AFCB065D8F0449FFB994 /* Assets.xcassets in Resources */, ); runOnlyForDeploymentPostprocessing = 0; };
+    9329A539F308EBCD827166C4 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (3133AFCB065D8F0449FFB994 /* Assets.xcassets in Resources */, B10000000000000000000003 /* PrivacyInfo.xcprivacy in Resources */, ); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -161,14 +166,15 @@
       GENERATE_INFOPLIST_FILE = YES;
       INFOPLIST_KEY_CFBundleDisplayName = PRIMALMACRO;
       INFOPLIST_KEY_NSCameraUsageDescription = "Capture food, menus, and labels to estimate nutrition.";
-      INFOPLIST_KEY_PMScannerEndpoint = PM_SCANNER_ENDPOINT_PLACEHOLDER;
+      INFOPLIST_FILE = PRIMALMACRO/Info.plist;
+      PM_SCANNER_ENDPOINT = "PM_SCANNER_ENDPOINT_PLACEHOLDER";
       INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
       INFOPLIST_KEY_UILaunchScreen_Generation = YES;
       INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
       INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
       IPHONEOS_DEPLOYMENT_TARGET = 17.0;
       LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
-      MARKETING_VERSION = 0.1.0;
+      MARKETING_VERSION = 0.2.0;
       PRODUCT_BUNDLE_IDENTIFIER = uk.themachine1979.primalmacro;
       PRODUCT_NAME = "$(TARGET_NAME)";
       SDKROOT = iphoneos;
@@ -187,14 +193,15 @@
       GENERATE_INFOPLIST_FILE = YES;
       INFOPLIST_KEY_CFBundleDisplayName = PRIMALMACRO;
       INFOPLIST_KEY_NSCameraUsageDescription = "Capture food, menus, and labels to estimate nutrition.";
-      INFOPLIST_KEY_PMScannerEndpoint = PM_SCANNER_ENDPOINT_PLACEHOLDER;
+      INFOPLIST_FILE = PRIMALMACRO/Info.plist;
+      PM_SCANNER_ENDPOINT = "PM_SCANNER_ENDPOINT_PLACEHOLDER";
       INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
       INFOPLIST_KEY_UILaunchScreen_Generation = YES;
       INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
       INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
       IPHONEOS_DEPLOYMENT_TARGET = 17.0;
       LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
-      MARKETING_VERSION = 0.1.0;
+      MARKETING_VERSION = 0.2.0;
       PRODUCT_BUNDLE_IDENTIFIER = uk.themachine1979.primalmacro;
       PRODUCT_NAME = "$(TARGET_NAME)";
       SDKROOT = iphoneos;

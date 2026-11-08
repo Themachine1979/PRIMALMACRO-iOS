@@ -31,10 +31,12 @@ struct PMLargeButton: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 if let icon { Image(systemName: icon) }
-                Text(title).font(.headline.weight(.heavy))
+                Text(title).font(.headline.weight(.heavy)).multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 54)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 12)
+            .frame(minHeight: 54)
             .foregroundStyle(.white)
             .background(enabled ? PM.orange : PM.elevated,
                         in: RoundedRectangle(cornerRadius: 14))

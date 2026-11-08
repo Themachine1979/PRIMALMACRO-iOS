@@ -1,58 +1,66 @@
-# PRIMALMACRO iOS v0.2 — Apple Sign-in + StoreKit launch checklist
+# PRIMALMACRO v0.2 TestFlight release
 
-This release is a new iOS TestFlight build. Google login is **not** included.
+## Apple owner actions
 
-## Customer experience
+1. Confirm the PRIMALMACRO app record uses bundle ID `uk.themachine1979.primalmacro`. Enable Sign in with Apple on that App ID and regenerate the App Store provisioning profile for Codemagic.
+2. Create both auto-renewable products in one PRIMALMACRO Premium subscription group. Use the United Kingdom as the base storefront.
 
-1. Branded PRIMALMACRO welcome/paywall screen on first launch.
-2. Monthly and yearly plan choices, displaying prices returned by Apple StoreKit.
-3. **Sign in with Apple** (no Gmail or Google requirement).
-4. 14-day free trial **only if configured in App Store Connect and eligible according to Apple**.
-5. Subscribe or Restore Purchases; verified active StoreKit subscription unlocks onboarding and tracker.
-6. AI scanner uses the URL bundled at build time. Customers never enter API keys or tokens.
+   | Product ID | Duration | UK price |
+   | --- | --- | --- |
+   | `uk.themachine1979.primalmacro.monthly` | One month | £5.99 |
+   | `uk.themachine1979.primalmacro.yearly` | One year | £49.99 |
 
-## App Store Connect actions required (owner)
+3. Configure a two-week free introductory offer for both products and complete availability, localisation and review metadata. StoreKit supplies the storefront price and confirms trial eligibility. Google login is deferred.
+4. For scanner testing, obtain the App Store Server API in-app purchase key, key ID and issuer ID. Keep these in Cloudflare.
 
-1. Open PRIMALMACRO in App Store Connect.
-2. Under Monetization > Subscriptions, create one subscription group: PRIMALMACRO Premium.
-3. Create *auto-renewable* subscriptions in the **same group**:
-   - Monthly: `uk.themachine1979.primalmacro.monthly`
-   - Yearly: `uk.themachine1979.primalmacro.yearly`
-4. Use **United Kingdom as the base storefront** and set the selected launch prices:
-   - Monthly: **£5.99 per month** (duration: 1 Month).
-   - Yearly: **£49.99 per year** (duration: 1 Year).
-   - Savings for yearly vs twelve monthly payments: approximately **30.5%**.
-   - These are owner-approved UK prices only; the app intentionally fetches the real storefront price via StoreKit rather than embedding a currency amount.
-   - Create each product's subscription availability, localisation, and required App Review metadata.
-5. Configure an introductory offer **Free Trial, 2 Weeks** for each plan where allowed. Apple limits trial eligibility across the group.
-6. For TestFlight / sandbox, product availability can take time to propagate. Do not promise prices until StoreKit returns them.
+## TestFlight v0.2 build 11 findings (2026-11-08)
 
-## Apple capability / certificate actions
+- The iPhone welcome screen renders and Sign in with Apple presents successfully. Sign out appears after authentication, but the app still requires a **verified StoreKit subscription** before opening the tracker.
+- Both monthly and yearly prices currently display as **Unavailable** because StoreKit did not return the configured product identifiers. This is not corrected by adding another login method. Check that the products exist in App Store Connect, are in one subscription group, have matching IDs and durations, UK prices, availability, localisation, metadata, and eligible 2-week introductory offers. Verify the Paid Apps Agreement and subscription status. After changing metadata, allow sandbox propagation before retesting.
+- Commit `670a048` lets testers choose monthly or yearly even when prices are pending; the Subscribe button remains disabled until real StoreKit products load. This fix requires a **new** build to appear on iPhone.
+- An email/password account option was requested as a future addition. Implement it only with a trustworthy hosted identity provider, email verification, secure reset/recovery, privacy/deletion controls, and server-side entitlement validation. Do **not** store passwords locally, emulate logins, or grant premium access without verified Apple subscription. Apple login remains the only working identity method until a backend is configured.
+- AI scanning is **not yet live**. A deployed Cloudflare backend, owner-approved sandbox secrets, configured `PM_SCANNER_URL`, test-linked Apple purchase, and explicit `SCANS_ENABLED` approval are required. Do not activate OpenAI billing or public AI scanning by default.
+- Before claiming success, verify actual StoreKit product retrieval, purchase/trial via a sandbox TestFlight account, entry into tracker, then a safe closed-beta scan against the Worker. No steps here authorize deployment or uploads.
 
-The project includes `PRIMALMACRO/PRIMALMACRO.entitlements` for Sign in with Apple.
-- In Apple Developer, edit the PRIMALMACRO App ID `uk.themachine1979.primalmacro` and enable **Sign in with Apple**.
-- Regenerate the PRIMALMACRO App Store provisioning profile to include that capability.
-- Replace the old PRIMALMACRO profile in Codemagic code-signing identities. Leave the unrelated Quality Suite profile and certificate unchanged.
+## AI scanner sign-in loop fix — source changes for next TestFlight build
 
-## Owner-only AI backend activation (internal beta)
+- On build 11, tapping **Enable AI Scanning** fetched a challenge and offered **Continue with Apple**, but after Apple confirmation the app could return to the Enable button without a usable scanner session. Backend session failure was displayed generically.
+- The next iPhone build **removes Enable AI Scanning**. When the selected user has an eligible linked StoreKit subscription, the scanner displays **Analyse with AI**. The first user-chosen photo analysis requests the Apple confirmation only when a valid Keychain scanner session is missing. After successful confirmation it analyses the selected photo automatically instead of asking the customer to tap again. The initial PRIMALMACRO Apple login also attempts to establish the scanner session from its same identity token using a pre-fetched nonce.
+- Fresh server scanner sessions now last up to **30 days** (previously 24 hours); Apple requires user interaction to request a new identity token, so repeated daily sign-in would be poor UX. The iPhone checks credential state and clears the Keychain scanner token on sign-out/revocation. Every AI scan still requires a live, verified App Store subscription linked to the same Apple account, and the quota is checked on the server.
+- Cloudflare backend failures in `/session` now return safe, non-secret codes such as `APPLE_KEYS_UNAVAILABLE`, `QUOTA_STORAGE_UNAVAILABLE`, or `APPLE_SESSION_UNAVAILABLE`. The next app version can show the reference to help troubleshoot. No tokens, photos or secrets are included in these diagnostics.
+- For the approved closed-beta test, the checked-in Wrangler `SCAN_TOTAL_LIMIT` has been reduced from **100 to 5**. The checked-in `SCANS_ENABLED` remains **false**. **Important:** a Wrangler deployment can overwrite live dashboard variables: after any authorised backend deployment, recheck both settings; never re-enable scans before verifying the limit is 5 and the remaining Apple authentication and cost protections. The user had set the live Worker `SCANS_ENABLED=true` for the ongoing 5-scan controlled test. No code deployment was performed from this chat.
+- These changes are **source only**. They have not been compiled in Codemagic, deployed to Cloudflare, uploaded to TestFlight or verified on a physical iPhone. The old app cannot gain this UX fix until a new build is installed, and server TTL/diagnostic changes require a separate approved Worker deployment.
+- Manual verification: fresh Apple login -> scanner session established, monthly/yearly sandbox purchase linked to Apple identity, direct Analyse button with first-photo consent, auto-resume after Apple confirmation when needed, restart app with Keychain session preserved, verify server-side subscription rejection and quota exhaustion. Capture safe diagnostic code if auth still fails without collecting personal tokens.
 
-This version does **not** embed the OpenAI key.
-- Deploy the `backend/` Cloudflare Worker.
-- Add `OPENAI_API_KEY` as a Cloudflare secret (never to GitHub or the app).
-- The Worker is disabled by default: `BETA_SCANS_ENABLED = "false"`.
-- Only for a *small, monitored TestFlight beta*, enable the flag temporarily and deploy with the included Cloudflare rate-limit binding.
-- In **Codemagic → PRIMALMACRO-iOS → Environment variables**, set `PM_SCANNER_URL` to the deployed full HTTPS Worker URL ending in `/scan`.
-- Start a **new** signed workflow build to inject that address into generated app Info.plist.
-- In the iPhone app, scanning then uses the configured service automatically.
+## Codemagic
 
-**Important:** The IP-based limiter is approximate and is NOT login, quota enforcement, or App Store subscription verification. Before inviting public customers, the backend needs server-verified identity + subscription entitlement, per-user quotas, global cost controls and abuse protection. Never make an unprotected OpenAI-funded endpoint publicly available.
+1. Run `primalmacro-ios-check` on the PR branch. It runs the Swift nutrition test, Node Worker tests and unsigned simulator build.
+2. When starting the signed workflow, enter a positive whole build number higher than the latest PRIMALMACRO 0.2.0 build in App Store Connect. Optionally set `PM_SCANNER_URL` to the approved sandbox HTTPS URL ending in `/scan`. An empty URL leaves scanning unavailable.
+3. The existing `primalmacro-ios-testflight` workflow remains **build-only**: it exports an internal-testing-only IPA artifact without uploading it.
+4. A separate `primalmacro-ios-upload-internal` workflow is available for **explicitly approved uploads**. To use it, start it manually on `release/v0.2-testflight`, enter an unused build number (higher than build 10 if no other 0.2.0 build has been uploaded), and tick `I approve uploading this newly built IPA to App Store Connect`. Without that checkbox, the workflow exits before building or uploading. No scheduled or push triggers are configured.
+5. The upload workflow builds a **new internal-testing-only IPA** and uses the existing `PRIMALMACRO Codemagic` integration. Its `publishing.app_store_connect` block uploads the IPA to App Store Connect with both `submit_to_testflight: false` and `submit_to_app_store: false`. These flags mean **no automatic TestFlight beta-review submission and no App Store-review submission**, not "disable the IPA upload." After Apple processes the build, the owner manually assigns it to the appropriate internal tester group in App Store Connect.
+6. Do not run the upload workflow until the owner deliberately approves the upload. It does not deploy Cloudflare or enable paid AI scanning.
 
-## Validation and release notes
+[Codemagic internal TestFlight setup](https://docs.codemagic.io/yaml-publishing/app-store-connect/)
 
-- Google Sign-In is deliberately deferred. No Google SDK is required in the Xcode project.
-- The app locally checks the Sign in with Apple credential state, but a real account backend must cryptographically verify identity tokens before relying on them to authorise server requests.
-- No price is hardcoded. Trial wording only appears when the selected product has a 2-week free trial *and* StoreKit says the customer is eligible.
-- Subscriptions are handled by StoreKit, not custom card processing.
-- Signed build 2 uses the new entitlement; updated Apple provisioning is required.
-- Source changes are prepared, but a successful new Xcode compile and live StoreKit/Apple sign-in/AI scan **have not yet been verified**.
-- Capture real screenshots and add Privacy Policy, Support URL and account deletion flow as applicable before App Store public review.
+## Cloudflare and AI activation
+
+1. Keep the committed `SCANS_ENABLED = "false"` and any previous beta endpoint disabled. Use a dedicated sandbox Worker with `APP_STORE_ENVIRONMENT = "Sandbox"` for TestFlight. Review the SQLite Durable Object migration, rate-limit binding and budget variables.
+2. Add Worker secrets `SESSION_SECRET` (32 random bytes encoded as base64url or hex), `APP_STORE_PRIVATE_KEY` (full .p8), `APP_STORE_KEY_ID`, `APP_STORE_ISSUER_ID` and `OPENAI_API_KEY`. Use a restricted OpenAI project key and review model access, usage alerts and billing. Keep request bodies and credentials out of logs. Enable scanning only after the owner approves a controlled sandbox test.
+3. The Worker verifies Apple's RS256 identity signature, audience, issuer, expiry and a single-use five-minute challenge, then issues a 24-hour Keychain session. Each scan checks current subscription status, product, expiry, revocation, environment and the app account token against the App Store Server API. The Worker trusts transaction fields received directly from Apple's authenticated HTTPS endpoint and accepts no client-supplied transaction payload.
+4. A per-IP and per-member throttle limits short bursts. One Durable Object atomically reserves 3 attempts per member per UTC day, 25 globally per UTC day and 100 total by default. Failed and timed-out OpenAI attempts still consume a slot. The Worker pins the model and limits each request to one image, about 2.8 MB of request data and 1,400 completion tokens. These are usage limits. Provider charges depend on model pricing and other usage on the OpenAI project. Keep one budget namespace per deployment and review costs before raising the limits.
+5. Purchases made in this build pass an app account token to StoreKit. Existing purchases without it still work for the local tracker. AI requires a linked purchase. Use a fresh sandbox purchase and establish an owner-controlled migration plan before enabling AI for legacy subscribers. Family-shared, billing-retry and grace-period purchases do not grant scanner access in this release.
+
+[Apple identity verification](https://developer.apple.com/documentation/signinwithapple/verifying-a-user) · [App Store Server API](https://developer.apple.com/documentation/appstoreserverapi) · [Durable Object storage](https://developers.cloudflare.com/durable-objects/best-practices/access-durable-objects-storage/)
+
+## Validation
+
+- Six Worker tests passed on Node 24 with mocked Apple and OpenAI endpoints. They cover disabled configuration, signature and claim checks, forged sessions, nonce replay, wrong-account and revoked or expired entitlements, bounded request bodies, concurrent quota enforcement and a successful scan response.
+- Wrangler 4 dry run bundled the Worker, Durable Object and rate-limit binding with scans disabled.
+- Static parsing passed for the Swift sources, Xcode project, property lists, Wrangler TOML and Codemagic YAML.
+- This Windows host has no Swift compiler or Xcode. Run the Codemagic nutrition and simulator compile checks before signing. IPA generation, live Apple login, subscription products and trial eligibility, physical-device layout and a live scan remain unverified.
+- Internal acceptance should cover a small iPhone and a current notched or Dynamic Island model with large text, both UK prices, fresh and previously subscribed sandbox accounts, purchase cancellation, restore and refund or expiry. Check full-screen camera cancellation, all photo modes, manual diary fallback, scanner session expiry and quota exhaustion.
+
+## Public release gates
+
+Complete device acceptance, privacy and support links, and Apple privacy disclosures. Confirm the applicable account deletion and Apple access revocation flow and resolve legacy subscriber migration if needed. Production requires separately approved Apple and Cloudflare configuration, production transaction verification, and an approved AI budget.
