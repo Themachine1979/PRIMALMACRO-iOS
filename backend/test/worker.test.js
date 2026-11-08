@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import worker, { sanitizeFoods, ScanState } from '../src/worker.js';
+import worker, { sanitizeFoods, ScanState, analyze } from '../src/worker.js';
 import { accountToken, bundleID } from '../src/access.js';
 
 function fixture(limits = {}) {
@@ -317,4 +317,42 @@ test('Apple signature, nonce, replay, live entitlement and quotas gate the only 
   assert.equal((await valid.json()).foods[0].proteinG, 45);
   assert.equal((await worker.fetch(request('scan', scan, token), env)).status, 429);
   assert.equal(aiCalls, 1);
+});
+
+
+test('OpenAI diagnostic stages distinguish HTTP, network, and malformed responses without disclosing secrets', async t => {
+  const { env, db } = fixture();
+  t.after(() => db.close());
+  env.OPENAI_API_KEY = 'PRIVATE_TEST_KEY';
+  const warnings = [];
+  t.mock.method(console, 'warn', message => warnings.push(message));
+  let scenario = 'http';
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    assert.equal(url, 'https://api.openai.com/v1/chat/completions');
+    assert.equal(options.redirect, 'manual');
+    assert.equal(options.headers.authorization, 'Bearer PRIVATE_TEST_KEY');
+    if (scenario === 'http') return new Response('PRIVATE_ERROR_BODY', { status: 401 });
+    if (scenario === 'network') throw new Error('PRIVATE_NETWORK_DETAILS');
+    if (scenario === 'bad') return new Response('not JSON', { status: 200 });
+    return Response.json({ choices: [{ message: { content:
+      '{"foods":[{"name":"Soup","calories":150}],"disclaimer":"Estimated"}' } }] });
+  });
+  const input = { mode: 'food', imageBase64 };
+  assert.equal((await analyze(input, env)).status, 502);
+  scenario = 'network';
+  assert.equal((await analyze(input, env)).status, 502);
+  scenario = 'bad';
+  assert.equal((await analyze(input, env)).status, 502);
+  scenario = 'ok';
+  const valid = await analyze(input, env);
+  assert.equal(valid.status, 200);
+  assert.equal((await valid.json()).foods[0].name, 'Soup');
+  assert.deepEqual(warnings, [
+    'PM_AI_STAGE: OPENAI_HTTP_401',
+    'PM_AI_STAGE: OPENAI_NETWORK_OR_TIMEOUT',
+    'PM_AI_STAGE: OPENAI_BAD_RESPONSE'
+  ]);
+  assert.equal(JSON.stringify(warnings).includes('PRIVATE_TEST_KEY'), false);
+  assert.equal(JSON.stringify(warnings).includes('PRIVATE_ERROR_BODY'), false);
+  assert.equal(JSON.stringify(warnings).includes('PRIVATE_NETWORK_DETAILS'), false);
 });
