@@ -50,6 +50,7 @@ struct ScannerSession: Codable {
 
 enum ScanError: LocalizedError {
     case serviceUnavailable
+    case backendUnavailable(String)
     case imagePreparation
     case rateLimited
     case signInRequired
@@ -60,6 +61,7 @@ enum ScanError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .serviceUnavailable: "AI scanning is temporarily unavailable. Please try again later."
+        case .backendUnavailable(let code): "AI connection is unavailable (reference: \(code)). Please try again later."
         case .imagePreparation: "Could not prepare the photo. Try a different image."
         case .rateLimited: "The scan limit has been reached. Please try again later."
         case .signInRequired: "Confirm your Apple sign-in to continue scanning."
@@ -123,6 +125,17 @@ enum ScanClient {
         case 401: throw ScanError.signInRequired
         case 403: throw ScanError.subscriptionRequired
         case 429: throw ScanError.rateLimited
+        case 503:
+            struct Failure: Decodable { let code: String? }
+            let code = (try? JSONDecoder().decode(Failure.self, from: data))?.code
+            let allowed: Set<String> = [
+                "APPLE_KEYS_UNAVAILABLE", "QUOTA_STORAGE_UNAVAILABLE",
+                "APPLE_SESSION_UNAVAILABLE", "SCANNER_SERVICE_UNAVAILABLE"
+            ]
+            if let code, allowed.contains(code) {
+                throw ScanError.backendUnavailable(code)
+            }
+            throw ScanError.serviceUnavailable
         default: throw ScanError.serviceUnavailable
         }
     }
