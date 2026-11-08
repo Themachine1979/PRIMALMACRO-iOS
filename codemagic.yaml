@@ -1,0 +1,33 @@
+# PRIMALMACRO - first Codemagic build: compile iPhone app for simulator.
+# This verifies the SwiftUI project without Apple signing.
+# A signed TestFlight workflow will be added after the first successful build
+# and after a unique bundle identifier and App Store Connect signing are configured.
+workflows:
+  primalmacro-ios-check:
+    name: PRIMALMACRO - iOS compile check
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      xcode: latest
+    scripts:
+      - name: Check Xcode project and scheme
+        script: |
+          test -f "$CM_BUILD_DIR/PRIMALMACRO.xcodeproj/project.pbxproj" || {
+            echo "PRIMALMACRO.xcodeproj is missing from the repository root. Upload the full extracted Xcode project, including its folders."
+            exit 1
+          }
+          xcodebuild -list -project "$CM_BUILD_DIR/PRIMALMACRO.xcodeproj"
+      - name: Compile for iPhone simulator (no signing)
+        script: |
+          xcodebuild \
+            -project "$CM_BUILD_DIR/PRIMALMACRO.xcodeproj" \
+            -scheme "PRIMALMACRO" \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$CM_BUILD_DIR/build/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+    artifacts:
+      - build/DerivedData/Build/Products/Debug-iphonesimulator/*.app
+      - /tmp/xcodebuild_logs/*.log
