@@ -17,7 +17,10 @@
 
 1. Run `primalmacro-ios-check` on the PR branch. It runs the Swift nutrition test, Node Worker tests and unsigned simulator build.
 2. When starting the signed workflow, enter a positive whole build number higher than the latest PRIMALMACRO 0.2.0 build in App Store Connect. Optionally set `PM_SCANNER_URL` to the approved sandbox HTTPS URL ending in `/scan`. An empty URL leaves scanning unavailable.
-3. Start `primalmacro-ios-testflight` manually with the updated PRIMALMACRO profile and `PRIMALMACRO Codemagic` integration. It exports an internal-testing-only IPA as an artifact. After approval, upload the IPA with Transporter and assign it to the intended internal TestFlight group. The workflow has no upload or publishing step.
+3. The existing `primalmacro-ios-testflight` workflow remains **build-only**: it exports an internal-testing-only IPA artifact without uploading it.
+4. A separate `primalmacro-ios-upload-internal` workflow is available for **explicitly approved uploads**. To use it, start it manually on `release/v0.2-testflight`, enter an unused build number (higher than build 10 if no other 0.2.0 build has been uploaded), and tick `I approve uploading this newly built IPA to App Store Connect`. Without that checkbox, the workflow exits before building or uploading. No scheduled or push triggers are configured.
+5. The upload workflow builds a **new internal-testing-only IPA** and uses the existing `PRIMALMACRO Codemagic` integration. Its `publishing.app_store_connect` block uploads the IPA to App Store Connect with both `submit_to_testflight: false` and `submit_to_app_store: false`. These flags mean **no automatic TestFlight beta-review submission and no App Store-review submission**, not "disable the IPA upload." After Apple processes the build, the owner manually assigns it to the appropriate internal tester group in App Store Connect.
+6. Do not run the upload workflow until the owner deliberately approves the upload. It does not deploy Cloudflare or enable paid AI scanning.
 
 [Codemagic internal TestFlight setup](https://docs.codemagic.io/yaml-publishing/app-store-connect/)
 
