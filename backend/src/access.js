@@ -223,6 +223,17 @@ export async function checkEntitlement(env, subject, transactionID) {
       console.warn('PM_SCAN_STAGE: APP_STORE_NETWORK_OR_TIMEOUT');
       throw new Error('Apple subscription lookup unavailable');
     }
+    if (response.status === 401 && env.APP_STORE_ENVIRONMENT === 'Auto' &&
+        environment === 'Production') {
+      // Before the first public App Store release, Apple's production Server
+      // API can return 401 even for a valid IAP API key. A sandbox lookup may
+      // proceed, but ONLY a separately verified, linked Apple entitlement
+      // in that sandbox response can unlock scanning.
+      // Keep this signal visible: after launch it can indicate a production
+      // credentials problem that needs immediate investigation.
+      console.warn('PM_SCAN_STAGE: PRODUCTION_401_SANDBOX_FALLBACK');
+      continue;
+    }
     if (response.status === 404) {
       if (env.APP_STORE_ENVIRONMENT !== 'Auto' || environment !== 'Production') return false;
       let errorCode;
