@@ -161,7 +161,7 @@ export default {
   }
 };
 
-async function analyze(input, env) {
+export async function analyze(input, env) {
   const aiBody = {
     model: MODEL,
     temperature: 0.2,
@@ -182,10 +182,17 @@ async function analyze(input, env) {
       headers: { 'content-type': 'application/json', authorization: `Bearer ${env.OPENAI_API_KEY}` },
       body: JSON.stringify(aiBody),
       redirect: 'manual',
-    signal: AbortSignal.timeout(35_000)
+      signal: AbortSignal.timeout(35_000)
     });
-  } catch { return json({ error: 'AI service unavailable' }, 502); }
-  if (!response.ok) return json({ error: 'AI service request failed' }, 502);
+  } catch {
+    // Log fixed stage codes only: never log tokens, images, response bodies or errors.
+    console.warn('PM_AI_STAGE: OPENAI_NETWORK_OR_TIMEOUT');
+    return json({ error: 'AI service unavailable' }, 502);
+  }
+  if (!response.ok) {
+    console.warn('PM_AI_STAGE: OPENAI_HTTP_' + response.status);
+    return json({ error: 'AI service request failed' }, 502);
+  }
 
   try {
     const result = await response.json();
@@ -198,5 +205,8 @@ async function analyze(input, env) {
         ? parsed.disclaimer.slice(0, 240)
         : 'AI estimates require verification before logging.'
     });
-  } catch { return json({ error: 'Could not parse AI nutrition analysis' }, 502); }
+  } catch {
+    console.warn('PM_AI_STAGE: OPENAI_BAD_RESPONSE');
+    return json({ error: 'Could not parse AI nutrition analysis' }, 502);
+  }
 }
