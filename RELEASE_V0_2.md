@@ -18,7 +18,12 @@ This release is a new iOS TestFlight build. Google login is **not** included.
 3. Create *auto-renewable* subscriptions in the **same group**:
    - Monthly: `uk.themachine1979.primalmacro.monthly`
    - Yearly: `uk.themachine1979.primalmacro.yearly`
-4. Configure durations (1 month and 1 year), storefront prices, localisation and the required subscription metadata.
+4. Use **United Kingdom as the base storefront** and set the selected launch prices:
+   - Monthly: **£5.99 per month** (duration: 1 Month).
+   - Yearly: **£49.99 per year** (duration: 1 Year).
+   - Savings for yearly vs twelve monthly payments: approximately **30.5%**.
+   - These are owner-approved UK prices only; the app intentionally fetches the real storefront price via StoreKit rather than embedding a currency amount.
+   - Create each product's subscription availability, localisation, and required App Review metadata.
 5. Configure an introductory offer **Free Trial, 2 Weeks** for each plan where allowed. Apple limits trial eligibility across the group.
 6. For TestFlight / sandbox, product availability can take time to propagate. Do not promise prices until StoreKit returns them.
 
