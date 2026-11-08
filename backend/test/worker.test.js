@@ -171,6 +171,29 @@ test('Apple public-key HTTP failure reports status only, never response body or 
   assert.equal(JSON.stringify(warningLines).includes('SECRET_BODY_NOT_FOR_LOGS'), false);
 });
 
+test('Apple key endpoint redirects are rejected and are never followed', async t => {
+  const { env, db } = fixture();
+  t.after(() => db.close());
+  const started = await worker.fetch(request('challenge'), env);
+  const { nonce } = await started.json();
+  const iat = Math.floor(Date.now() / 1000);
+  const token = segment({ alg: 'RS256', kid: 'test' }) + '.' +
+    segment({ iss: 'https://appleid.apple.com', aud: bundleID, sub: 'test',
+      iat, exp: iat + 300, nonce }) + '.AAAA';
+  let requests = 0;
+  t.mock.method(console, 'warn', () => {});
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    requests++;
+    assert.equal(url, 'https://appleid.apple.com/auth/keys');
+    assert.equal(options.redirect, 'manual');
+    return new Response(null, { status: 302, headers: { location: 'https://untrusted.example/key' } });
+  });
+  const reply = await worker.fetch(request('session', { nonce, identityToken: token }), env);
+  assert.equal(reply.status, 503);
+  assert.equal((await reply.json()).code, 'APPLE_KEYS_UNAVAILABLE');
+  assert.equal(requests, 1);
+});
+
 test('Apple signature, nonce, replay, live entitlement and quotas gate the only OpenAI call', async t => {
   const { env, db } = fixture();
   t.after(() => db.close());
@@ -192,8 +215,12 @@ test('Apple signature, nonce, replay, live entitlement and quotas gate the only 
   let status = 1;
   let aiCalls = 0;
   t.mock.method(globalThis, 'fetch', async (url, options) => {
-    if (url === 'https://appleid.apple.com/auth/keys') return Response.json({ keys: [jwk] });
+    if (url === 'https://appleid.apple.com/auth/keys') {
+      assert.equal(options.redirect, 'manual'); // Cloudflare Workers cannot use "error".
+      return Response.json({ keys: [jwk] });
+    }
     if (url === 'https://api.storekit-sandbox.apple.com/inApps/v1/subscriptions/123') {
+      assert.equal(options.redirect, 'manual');
       const [header, claims, signature] = options.headers.authorization.slice(7).split('.');
       assert.equal(JSON.parse(Buffer.from(claims, 'base64url')).bid, bundleID);
       assert.equal(await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, appStoreKey.publicKey,
@@ -203,6 +230,7 @@ test('Apple signature, nonce, replay, live entitlement and quotas gate the only 
       }] }] });
     }
     assert.equal(url, 'https://api.openai.com/v1/chat/completions');
+    assert.equal(options.redirect, 'manual');
     aiCalls++;
     return Response.json({ choices: [{ message: { content: JSON.stringify({
       foods: [{ name: 'Chicken bowl', calories: 500, proteinG: 45 }], disclaimer: 'Portion estimated'
