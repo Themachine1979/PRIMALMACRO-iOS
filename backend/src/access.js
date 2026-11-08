@@ -200,51 +200,74 @@ export async function checkEntitlement(env, subject, transactionID) {
   if (typeof transactionID !== 'string' || !/^\d{1,24}$/.test(transactionID)) {
     throw new AccessError(400, 'Missing subscription information.');
   }
-  const sandbox = env.APP_STORE_ENVIRONMENT === 'Sandbox';
-  const host = sandbox ? 'api.storekit-sandbox.apple.com' : 'api.storekit.apple.com';
+  // Auto is for public release: Apple recommends production first and sandbox
+  // fallback ONLY for production TransactionIdNotFoundError (4040010).
+  // Sandbox and Production modes remain available for isolated testing.
+  const environments = env.APP_STORE_ENVIRONMENT === 'Auto'
+    ? ['Production', 'Sandbox']
+    : [env.APP_STORE_ENVIRONMENT];
   const jwt = await storeAPIJWT(env);
-  let response;
-  try {
-    response = await fetch('https://' + host + '/inApps/v1/subscriptions/' + transactionID, {
-      headers: { authorization: 'Bearer ' + jwt },
-      redirect: 'manual', signal: AbortSignal.timeout(8000)
-    });
-  } catch {
-    console.warn('PM_SCAN_STAGE: APP_STORE_NETWORK_OR_TIMEOUT');
-    throw new Error('Apple subscription lookup unavailable');
-  }
-  if (response.status === 404) return false;
-  if (!response.ok) {
-    // Safe numeric HTTP status only. Never log Apple's response body or JWT.
-    console.warn('PM_SCAN_STAGE: APP_STORE_HTTP_' + response.status);
-    throw new Error('Apple subscription lookup unavailable');
-  }
-  let status;
-  try {
-    status = await response.json();
-    if (!status || !Array.isArray(status.data)) throw new Error();
-  } catch {
-    console.warn('PM_SCAN_STAGE: APP_STORE_BAD_RESPONSE');
-    throw new Error('Apple subscription lookup unavailable');
-  }
-  if (status.bundleId !== bundleID || status.environment !== env.APP_STORE_ENVIRONMENT) return false;
   const expected = await accountToken(subject);
-  try {
-    return status.data.some(group => group.lastTransactions.some(entry => {
-      // This payload comes directly from the fixed Apple API origin over TLS.
-      // Client-supplied StoreKit JWS and client-supplied entitlement claims are never accepted.
-      if (entry.status !== 1 || entry.originalTransactionId !== transactionID) return false;
-      const parts = entry.signedTransactionInfo.split('.');
-      if (parts.length !== 3) return false;
-      const tx = parse(parts[1]);
-      return tx.bundleId === bundleID && tx.environment === env.APP_STORE_ENVIRONMENT &&
-        tx.originalTransactionId === transactionID && products.has(tx.productId) &&
-        tx.appAccountToken?.toLowerCase() === expected && tx.inAppOwnershipType === 'PURCHASED' &&
-        tx.revocationDate == null && tx.isUpgraded !== true &&
-        Number.isSafeInteger(tx.expiresDate) && tx.expiresDate > Date.now();
-    }));
-  } catch {
-    console.warn('PM_SCAN_STAGE: APP_STORE_TRANSACTION_PARSE');
-    throw new Error('Apple subscription lookup unavailable');
+
+  for (const environment of environments) {
+    const host = environment === 'Sandbox'
+      ? 'api.storekit-sandbox.apple.com'
+      : 'api.storekit.apple.com';
+    let response;
+    try {
+      response = await fetch('https://' + host + '/inApps/v1/subscriptions/' + transactionID, {
+        headers: { authorization: 'Bearer ' + jwt },
+        redirect: 'manual', signal: AbortSignal.timeout(8000)
+      });
+    } catch {
+      console.warn('PM_SCAN_STAGE: APP_STORE_NETWORK_OR_TIMEOUT');
+      throw new Error('Apple subscription lookup unavailable');
+    }
+    if (response.status === 404) {
+      if (env.APP_STORE_ENVIRONMENT !== 'Auto' || environment !== 'Production') return false;
+      let errorCode;
+      try {
+        const error = await response.json();
+        errorCode = error?.errorCode;
+      } catch {
+        return false;
+      }
+      // Do not fall back for an unknown app/account error or malformed response.
+      if (errorCode === 4040010) continue;
+      return false;
+    }
+    if (!response.ok) {
+      // Never log Apple's response body, JWT or transaction details.
+      console.warn('PM_SCAN_STAGE: APP_STORE_HTTP_' + response.status);
+      throw new Error('Apple subscription lookup unavailable');
+    }
+    let status;
+    try {
+      status = await response.json();
+      if (!status || !Array.isArray(status.data)) throw new Error();
+    } catch {
+      console.warn('PM_SCAN_STAGE: APP_STORE_BAD_RESPONSE');
+      throw new Error('Apple subscription lookup unavailable');
+    }
+    if (status.bundleId !== bundleID || status.environment !== environment) return false;
+    try {
+      return status.data.some(group => group.lastTransactions.some(entry => {
+        // This payload comes directly from the fixed Apple API origin over TLS.
+        // Client-supplied StoreKit JWS and entitlement claims are never accepted.
+        if (entry.status !== 1 || entry.originalTransactionId !== transactionID) return false;
+        const parts = entry.signedTransactionInfo.split('.');
+        if (parts.length !== 3) return false;
+        const tx = parse(parts[1]);
+        return tx.bundleId === bundleID && tx.environment === environment &&
+          tx.originalTransactionId === transactionID && products.has(tx.productId) &&
+          tx.appAccountToken?.toLowerCase() === expected && tx.inAppOwnershipType === 'PURCHASED' &&
+          tx.revocationDate == null && tx.isUpgraded !== true &&
+          Number.isSafeInteger(tx.expiresDate) && tx.expiresDate > Date.now();
+      }));
+    } catch {
+      console.warn('PM_SCAN_STAGE: APP_STORE_TRANSACTION_PARSE');
+      throw new Error('Apple subscription lookup unavailable');
+    }
   }
+  return false;
 }
