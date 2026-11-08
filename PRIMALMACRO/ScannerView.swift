@@ -8,14 +8,12 @@ struct ScannerView: View {
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var image: UIImage?
     @State private var isCameraShown = false
-    @State private var isSettingsShown = false
     @State private var isAnalyzing = false
     @State private var foods: [FoodEstimate] = []
     @State private var editing: FoodEstimate?
     @State private var errorMessage: String?
-    @AppStorage("scannerURL") private var scannerURL = ""
 
-    private var configured: Bool { !scannerURL.isEmpty && KeychainStore.readToken() != nil }
+    private var configured: Bool { ScannerService.isReady }
 
     var body: some View {
         ScrollView {
@@ -28,13 +26,6 @@ struct ScannerView: View {
                             .font(.system(size: 28, weight: .black, design: .rounded))
                     }
                     Spacer()
-                    Button { isSettingsShown = true } label: {
-                        Image(systemName: "gearshape.fill").font(.title3)
-                            .foregroundStyle(PM.secondary)
-                            .frame(width: 40, height: 40)
-                            .background(PM.surface, in: RoundedRectangle(cornerRadius: 12))
-                    }
-                    .accessibilityLabel("Scanner settings")
                 }
                 .padding(.top, 20)
 
@@ -106,12 +97,10 @@ struct ScannerView: View {
                 if !configured {
                     PMPanel {
                         VStack(alignment: .leading, spacing: 8) {
-                            Label("CONNECT AI SCANNER", systemImage: "lock.shield")
+                            Label("AI SCANNER OFFLINE", systemImage: "wifi.slash")
                                 .foregroundStyle(PM.orange).font(.subheadline.weight(.heavy))
-                            Text("Set your private AI service URL and access token to enable food recognition. Your diary still works without it.")
+                            Text("PRIMALMACRO AI is not connected in this build yet. Please update the app when scanning becomes available. No account keys or scanner setup are required.")
                                 .font(.caption).foregroundStyle(PM.secondary)
-                            Button("Configure scanner") { isSettingsShown = true }
-                                .font(.subheadline.weight(.semibold))
                         }
                     }
                 }
@@ -183,7 +172,6 @@ struct ScannerView: View {
             }
             .ignoresSafeArea()
         }
-        .sheet(isPresented: $isSettingsShown) { ScannerSettingsView() }
         .sheet(item: $editing) { estimate in
             FoodEditorView(initial: estimate, onSave: { entry in
                 store.addFood(entry)
@@ -221,9 +209,7 @@ struct ScannerView: View {
         isAnalyzing = true; foods = []; errorMessage = nil
         defer { isAnalyzing = false }
         do {
-            let response = try await ScanClient.analyze(image: image, mode: scanMode,
-                                                        endpoint: scannerURL,
-                                                        token: KeychainStore.readToken() ?? "")
+            let response = try await ScanClient.analyze(image: image, mode: scanMode)
             foods = response.foods
             if foods.isEmpty { errorMessage = "No readable nutrition data found. Try another photo." }
         } catch {
