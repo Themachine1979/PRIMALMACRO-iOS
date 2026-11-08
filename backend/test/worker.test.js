@@ -67,6 +67,31 @@ test('disabled or missing bindings fail closed', async () => {
   assert.equal((await worker.fetch(request('scan', scan), { ...env, SCAN_STATE: undefined })).status, 503);
   db.close();
 });
+test('startup failure diagnostics are safe and distinguish missing configuration categories', async t => {
+  const { env, db } = fixture();
+  t.after(() => db.close());
+  for (const [override, expected] of [
+    [{ SCANS_ENABLED: 'false' }, 'CONFIG_DISABLED'],
+    [{ OPENAI_API_KEY: undefined }, 'CONFIG_OPENAI_KEY'],
+    [{ SESSION_SECRET: 'short' }, 'CONFIG_SESSION_SECRET'],
+    [{ APP_STORE_KEY_ID: undefined }, 'CONFIG_APP_STORE_KEYS'],
+    [{ APP_STORE_ENVIRONMENT: 'invalid' }, 'CONFIG_APP_STORE_ENV'],
+    [{ SCAN_RATE_LIMIT: undefined }, 'CONFIG_RATE_LIMIT_BINDING'],
+    [{ SCAN_STATE: undefined }, 'CONFIG_STATE_BINDING']
+  ]) {
+    const response = await worker.fetch(request('challenge'), { ...env, ...override });
+    assert.equal(response.status, 503);
+    const output = await response.json();
+    assert.equal(output.code, expected);
+    assert.equal(JSON.stringify(output).includes(env.OPENAI_API_KEY), false);
+    assert.equal(JSON.stringify(output).includes(env.SESSION_SECRET), false);
+  }
+  const unavailable = { ...env, SCAN_RATE_LIMIT: { limit: async () => { throw new Error('internal'); } } };
+  const response = await worker.fetch(request('challenge'), unavailable);
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).code, 'RATE_LIMIT_UNAVAILABLE');
+});
+
 test('throttles before processing and rejects missing and forged sessions', async () => {
   const { env, db } = fixture();
   const throttled = { ...env, SCAN_RATE_LIMIT: { limit: async () => ({ success: false }) } };
