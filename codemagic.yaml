@@ -35,9 +35,9 @@ workflows:
     max_build_duration: 90
     instance_type: mac_mini_m2
     # This integration name must exactly match the API key name in
-    # Codemagic Team settings > Team integrations > Developer Portal.
+    # Codemagic account settings > Developer Portal integrations.
     integrations:
-      app_store_connect: PRIMALMACRO_APPLE
+      app_store_connect: "PRIMALMACRO Codemagic"
     environment:
       ios_signing:
         distribution_type: app_store
