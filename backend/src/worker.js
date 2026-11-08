@@ -181,7 +181,7 @@ async function analyze(input, env) {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${env.OPENAI_API_KEY}` },
       body: JSON.stringify(aiBody),
-      redirect: 'error',
+      redirect: 'manual',
     signal: AbortSignal.timeout(35_000)
     });
   } catch { return json({ error: 'AI service unavailable' }, 502); }
