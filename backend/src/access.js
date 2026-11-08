@@ -100,7 +100,12 @@ export async function session(env, input, state) {
   if (!await state.consume(pending.id, pending.exp)) {
     throw new AccessError(401, 'Please confirm your Apple sign-in again.');
   }
-  const exp = now() + 86_400;
+  // Keep the verified scanner session for 30 days on this iPhone instead of
+  // re-requesting a new Apple identity token every day. Apple discourages
+  // frequent re-authentication; subscription status is checked per scan.
+  // Sign out clears the iOS Keychain session; rotating SESSION_SECRET revokes
+  // all server sessions if needed.
+  const exp = now() + 30 * 86_400;
   return { token: await seal(env, { purpose: 'session', sub: claims.sub, exp }), expiresAt: exp };
 }
 
