@@ -50,6 +50,27 @@ workflows:
             echo "Missing native Xcode project in repository root."
             exit 1
           }
+      - name: Configure built-in AI scanner endpoint
+        script: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from urllib.parse import urlparse
+          url = os.environ.get("PM_SCANNER_URL", "").strip()
+          project = Path("PRIMALMACRO.xcodeproj/project.pbxproj")
+          if not url:
+              print("PM_SCANNER_URL not set; scanner will show temporarily unavailable.")
+          else:
+              parsed = urlparse(url)
+              if parsed.scheme != "https" or not parsed.hostname or not parsed.path.endswith("/scan"):
+                  raise SystemExit("PM_SCANNER_URL must be a full HTTPS URL ending in /scan")
+              source = project.read_text()
+              placeholder = "PM_SCANNER_ENDPOINT_PLACEHOLDER"
+              if source.count(placeholder) != 2:
+                  raise SystemExit("Expected scanner placeholder in both Xcode build configurations")
+              project.write_text(source.replace(placeholder, url))
+              print("Customer scanner URL configured at build time (no API keys in app).")
+          PY
       - name: Apply Apple distribution provisioning profile
         script: xcode-project use-profiles
       - name: Create signed iPhone IPA
