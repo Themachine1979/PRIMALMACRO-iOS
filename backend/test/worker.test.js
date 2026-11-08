@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import worker, { sanitizeFoods, ScanState, analyze } from '../src/worker.js';
-import { accountToken, bundleID } from '../src/access.js';
+import { accountToken, bundleID, checkEntitlement } from '../src/access.js';
 
 function fixture(limits = {}) {
   const db = new DatabaseSync(':memory:');
@@ -355,4 +355,100 @@ test('OpenAI diagnostic stages distinguish HTTP, network, and malformed response
   assert.equal(JSON.stringify(warnings).includes('PRIVATE_TEST_KEY'), false);
   assert.equal(JSON.stringify(warnings).includes('PRIVATE_ERROR_BODY'), false);
   assert.equal(JSON.stringify(warnings).includes('PRIVATE_NETWORK_DETAILS'), false);
+});
+
+
+test('Auto mode validates production and TestFlight transactions without unsafe fallback', async t => {
+  const { env, db } = fixture({ APP_STORE_ENVIRONMENT: 'Auto' });
+  t.after(() => db.close());
+  const keyPair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+  env.APP_STORE_PRIVATE_KEY = Buffer.from(await crypto.subtle.exportKey('pkcs8', keyPair.privateKey)).toString('base64');
+  const subject = 'auto-mode-test-user';
+  const linkedAccount = await accountToken(subject);
+  const originalID = '123';
+  const uri = environment => environment === 'Production'
+    ? 'https://api.storekit.apple.com/inApps/v1/subscriptions/123'
+    : 'https://api.storekit-sandbox.apple.com/inApps/v1/subscriptions/123';
+  const makeStatus = (environment, overrides = {}) => {
+    const payload = {
+      bundleId: bundleID, environment, originalTransactionId: originalID,
+      productId: bundleID + '.monthly', appAccountToken: linkedAccount,
+      inAppOwnershipType: 'PURCHASED', expiresDate: Date.now() + 60_000,
+      ...overrides
+    };
+    return Response.json({
+      bundleId: bundleID, environment,
+      data: [{ lastTransactions: [{
+        status: 1, originalTransactionId: originalID,
+        signedTransactionInfo: 'stub.' + segment(payload) + '.stub'
+      }] }]
+    });
+  };
+  let scenario = 'production';
+  let calls = [];
+  const warnings = [];
+  t.mock.method(console, 'warn', line => warnings.push(line));
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    calls.push(url);
+    assert.equal(options.redirect, 'manual');
+    assert.equal(options.headers.authorization.startsWith('Bearer '), true);
+    if (url === uri('Production')) {
+      if (scenario === 'sandbox') return Response.json({ errorCode: 4040010 }, { status: 404 });
+      if (scenario === 'unknown404') return Response.json({ errorCode: 4040005 }, { status: 404 });
+      if (scenario === 'unauthorized') return new Response('NO_SECRET_LEAK', { status: 401 });
+      if (scenario === 'badEnv') return makeStatus('Sandbox');
+      if (scenario === 'badAccount') return makeStatus('Production', { appAccountToken: await accountToken('someone-else') });
+      return makeStatus('Production');
+    }
+    if (url === uri('Sandbox')) return makeStatus('Sandbox');
+    throw new Error('Unexpected Apple API host');
+  });
+
+  assert.equal(await checkEntitlement(env, subject, originalID), true);
+  assert.deepEqual(calls, [uri('Production')]);
+  scenario = 'sandbox'; calls = [];
+  assert.equal(await checkEntitlement(env, subject, originalID), true);
+  assert.deepEqual(calls, [uri('Production'), uri('Sandbox')]);
+  scenario = 'unknown404'; calls = [];
+  assert.equal(await checkEntitlement(env, subject, originalID), false);
+  assert.deepEqual(calls, [uri('Production')]);
+  scenario = 'unauthorized'; calls = [];
+  await assert.rejects(checkEntitlement(env, subject, originalID), /unavailable/);
+  assert.deepEqual(calls, [uri('Production')]);
+  assert.deepEqual(warnings, ['PM_SCAN_STAGE: APP_STORE_HTTP_401']);
+  assert.equal(JSON.stringify(warnings).includes('NO_SECRET_LEAK'), false);
+  scenario = 'badEnv'; calls = [];
+  assert.equal(await checkEntitlement(env, subject, originalID), false);
+  assert.deepEqual(calls, [uri('Production')]);
+  scenario = 'badAccount'; calls = [];
+  assert.equal(await checkEntitlement(env, subject, originalID), false);
+  assert.deepEqual(calls, [uri('Production')]);
+
+  // Preserve isolated Sandbox mode as the current TestFlight configuration.
+  env.APP_STORE_ENVIRONMENT = 'Sandbox';
+  scenario = 'sandbox'; calls = [];
+  assert.equal(await checkEntitlement(env, subject, originalID), true);
+  assert.deepEqual(calls, [uri('Sandbox')]);
+});
+
+test('optional lifetime scan cap never disables daily limits or malformed-config protection', async t => {
+  const { db, state } = fixture({
+    SCAN_TOTAL_LIMIT: '0', SCAN_USER_DAILY_LIMIT: '2', SCAN_DAILY_LIMIT: '5'
+  });
+  t.after(() => db.close());
+  const reserve = async subject => (await (await state.fetch(request('state',
+    { operation: 'reserve', subject }))).json()).allowed;
+  assert.equal(await reserve('a'), true);
+  assert.equal(await reserve('a'), true);
+  assert.equal(await reserve('a'), false); // 2 per day, per user
+  assert.equal(await reserve('b'), true);
+  assert.equal(await reserve('b'), true);
+  assert.equal(await reserve('c'), true);
+  assert.equal(await reserve('d'), false); // 5 per day globally
+  assert.equal(db.prepare("SELECT count FROM quota WHERE key = 'total'").get(), undefined);
+
+  const invalid = fixture({ SCAN_TOTAL_LIMIT: '-1' });
+  t.after(() => invalid.db.close());
+  const result = await invalid.state.fetch(request('state', { operation: 'reserve', subject: 'a' }));
+  assert.equal((await result.json()).allowed, false);
 });
