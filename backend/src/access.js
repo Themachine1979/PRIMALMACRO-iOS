@@ -55,11 +55,40 @@ export async function challenge(env) {
 let appleKeys;
 async function appleKey(kid) {
   if (!appleKeys || appleKeys.expires < now()) {
-    const response = await fetch(appleIssuer + '/auth/keys', {
-      redirect: 'error', signal: AbortSignal.timeout(5000)
-    });
-    if (!response.ok) throw new Error('Apple keys unavailable');
-    appleKeys = { keys: (await response.json()).keys, expires: now() + 300 };
+    // Apple publishes the signing public keys at this documented URL.
+    // A transient upstream failure must not weaken signature validation.
+    let response;
+    try {
+      response = await fetch(appleIssuer + '/auth/keys', {
+        headers: { accept: 'application/json' },
+        redirect: 'error',
+        signal: AbortSignal.timeout(10000)
+      });
+    } catch {
+      // Fixed stage only: never log tokens, key IDs, key values or request data.
+      console.warn('PM_APPLE_KEYS_DETAIL: NETWORK_OR_TIMEOUT');
+      throw new Error('Apple keys unavailable');
+    }
+    if (!response.ok) {
+      // HTTP status is not private; it distinguishes Apple 403/429/5xx from
+      // networking faults without exposing the body or identity data.
+      console.warn('PM_APPLE_KEYS_DETAIL: HTTP_' + response.status);
+      throw new Error('Apple keys unavailable');
+    }
+    let payload;
+    try {
+      payload = await response.json();
+    } catch {
+      console.warn('PM_APPLE_KEYS_DETAIL: INVALID_JSON');
+      throw new Error('Apple keys unavailable');
+    }
+    if (!Array.isArray(payload?.keys) || !payload.keys.every(
+      key => key && typeof key.kid === 'string' && typeof key.kty === 'string'
+    )) {
+      console.warn('PM_APPLE_KEYS_DETAIL: INVALID_KEYSET');
+      throw new Error('Apple keys unavailable');
+    }
+    appleKeys = { keys: payload.keys, expires: now() + 300 };
   }
   return appleKeys.keys.find(key => key.kid === kid && key.kty === 'RSA' &&
     key.alg === 'RS256' && key.use === 'sig');
