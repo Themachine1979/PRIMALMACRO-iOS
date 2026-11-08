@@ -91,13 +91,34 @@ export async function session(env, input, state) {
   } catch {
     throw new AccessError(401, 'Apple sign-in could not be verified.');
   }
-  const jwk = await appleKey(keyID);
-  const algorithm = { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' };
-  if (!jwk || !await crypto.subtle.verify(algorithm,
-    await crypto.subtle.importKey('jwk', jwk, algorithm, false, ['verify']), signature, signed)) {
-    throw new AccessError(401, 'Apple sign-in could not be verified.');
+  let jwk;
+  try {
+    jwk = await appleKey(keyID);
+  } catch (error) {
+    // Only output a fixed stage identifier; never log identity tokens,
+    // credential claims, signature contents or the originating IP.
+    console.warn('PM_SESSION_STAGE: APPLE_PUBLIC_KEYS');
+    throw error;
   }
-  if (!await state.consume(pending.id, pending.exp)) {
+  if (!jwk) throw new AccessError(401, 'Apple sign-in could not be verified.');
+  const algorithm = { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' };
+  let validSignature;
+  try {
+    const importedKey = await crypto.subtle.importKey('jwk', jwk, algorithm, false, ['verify']);
+    validSignature = await crypto.subtle.verify(algorithm, importedKey, signature, signed);
+  } catch {
+    console.warn('PM_SESSION_STAGE: APPLE_SIGNATURE_ENGINE');
+    throw new Error('Apple signature verification unavailable');
+  }
+  if (!validSignature) throw new AccessError(401, 'Apple sign-in could not be verified.');
+  let consumed;
+  try {
+    consumed = await state.consume(pending.id, pending.exp);
+  } catch {
+    console.warn('PM_SESSION_STAGE: NONCE_STORAGE');
+    throw new Error('Scan state unavailable');
+  }
+  if (!consumed) {
     throw new AccessError(401, 'Please confirm your Apple sign-in again.');
   }
   // Keep the verified scanner session for 30 days on this iPhone instead of
@@ -106,7 +127,12 @@ export async function session(env, input, state) {
   // Sign out clears the iOS Keychain session; rotating SESSION_SECRET revokes
   // all server sessions if needed.
   const exp = now() + 30 * 86_400;
-  return { token: await seal(env, { purpose: 'session', sub: claims.sub, exp }), expiresAt: exp };
+  try {
+    return { token: await seal(env, { purpose: 'session', sub: claims.sub, exp }), expiresAt: exp };
+  } catch {
+    console.warn('PM_SESSION_STAGE: SESSION_SIGNING');
+    throw new Error('Session signing unavailable');
+  }
 }
 
 export async function authenticate(env, request) {
