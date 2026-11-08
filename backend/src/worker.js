@@ -117,7 +117,13 @@ export default {
       }
       if (!allowed) return json({ error: 'Too many requests. Try again shortly.' }, 429);
       if (pathname === '/challenge') return json(await challenge(env));
-      const state = scanState(env);
+      let state;
+      try {
+        state = scanState(env);
+      } catch {
+        if (pathname === '/session') console.warn('PM_SESSION_STAGE: STATE_INITIALIZATION');
+        throw new Error('Scan state unavailable');
+      }
       if (pathname === '/session') return json(await session(env, await readJSON(request, 8192), state));
 
       const subject = await authenticate(env, request);
