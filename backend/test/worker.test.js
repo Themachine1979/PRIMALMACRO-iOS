@@ -100,6 +100,28 @@ test('atomic reservations enforce per-user, daily and lifetime budgets', async (
   db.close();
 });
 
+test('failed Apple public-key lookup returns a safe diagnostic without leaking tokens', async t => {
+  const { env, db } = fixture();
+  t.after(() => db.close());
+  const started = await worker.fetch(request('challenge'), env);
+  assert.equal(started.status, 200);
+  const { nonce } = await started.json();
+  const iat = Math.floor(Date.now() / 1000);
+  const unverifiedToken = segment({ alg: 'RS256', kid: 'diagnostic-test' }) + '.' +
+    segment({ iss: 'https://appleid.apple.com', aud: bundleID, sub: 'test',
+      iat, exp: iat + 300, nonce }) + '.AAAA';
+  t.mock.method(globalThis, 'fetch', async url => {
+    assert.equal(url, 'https://appleid.apple.com/auth/keys');
+    return new Response('unavailable', { status: 503 });
+  });
+  const r = await worker.fetch(request('session',
+    { identityToken: unverifiedToken, nonce }), env);
+  assert.equal(r.status, 503);
+  const details = await r.json();
+  assert.equal(details.code, 'APPLE_KEYS_UNAVAILABLE');
+  assert.equal(JSON.stringify(details).includes(unverifiedToken), false);
+});
+
 test('Apple signature, nonce, replay, live entitlement and quotas gate the only OpenAI call', async t => {
   const { env, db } = fixture();
   t.after(() => db.close());
