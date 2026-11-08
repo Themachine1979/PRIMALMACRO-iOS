@@ -20,8 +20,13 @@ export class ScanState {
       if (operation !== 'reserve') return false;
       const day = new Date().toISOString().slice(0, 10);
       this.sql.exec("DELETE FROM quota WHERE key LIKE 'day:%' AND key NOT LIKE ?", 'day:' + day + ':%');
+      // A total limit of 0 disables only the beta lifetime cap. Daily
+      // per-user and global limits remain compulsory spending safeguards.
+      const totalLimit = Number(this.env.SCAN_TOTAL_LIMIT);
+      if (typeof this.env.SCAN_TOTAL_LIMIT !== 'string' ||
+          !Number.isSafeInteger(totalLimit) || totalLimit < 0) return false;
       const limits = [
-        ['total', Number(this.env.SCAN_TOTAL_LIMIT)],
+        ...(totalLimit > 0 ? [['total', totalLimit]] : []),
         ['day:' + day + ':all', Number(this.env.SCAN_DAILY_LIMIT)],
         ['day:' + day + ':user:' + subject, Number(this.env.SCAN_USER_DAILY_LIMIT)]
       ];
