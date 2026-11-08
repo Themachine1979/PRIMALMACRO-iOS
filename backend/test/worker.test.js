@@ -156,7 +156,11 @@ test('Apple signature, nonce, replay, live entitlement and quotas gate the only 
   }), env)).status, 401);
   const login = await worker.fetch(request('session', { nonce, identityToken }), env);
   assert.equal(login.status, 200);
-  const { token } = await login.json();
+  const { token, expiresAt } = await login.json();
+  // Secure sessions stay available without another Apple prompt every day.
+  // The actual subscription entitlement is still checked on every scan.
+  assert.ok(expiresAt > Math.floor(Date.now() / 1000) + 29 * 86_400);
+  assert.ok(expiresAt < Math.floor(Date.now() / 1000) + 31 * 86_400);
   assert.equal((await worker.fetch(request('session', { nonce, identityToken }), env)).status, 401);
   assert.equal((await worker.fetch(request('scan', { ...scan, mode: 'invalid' }, token), env)).status, 400);
   assert.equal((await worker.fetch(request('scan', { ...scan, imageBase64: 'x'.repeat(2_801_025) }, token), env)).status, 413);
