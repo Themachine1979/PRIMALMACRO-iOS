@@ -1,0 +1,8 @@
+name = "primalmacro-scanner"
+main = "src/worker.js"
+compatibility_date = "2026-10-01"
+
+# Set secrets with:
+# npx wrangler secret put OPENAI_API_KEY
+# npx wrangler secret put PRIMAL_ACCESS_TOKEN
+# Do not put credentials in this file.

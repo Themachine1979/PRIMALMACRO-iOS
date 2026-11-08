@@ -1,0 +1,37 @@
+PRIMALMACRO iOS - CODEMAGIC UPLOAD GUIDE (v0.1.1)
+================================================
+
+WHY YOUR PREVIOUS BUILD FAILED
+------------------------------
+Your GitHub repository contains the README and the Codemagic YAML, but
+is missing PRIMALMACRO.xcodeproj/project.pbxproj and SwiftUI source files.
+
+THIS ZIP HAS BEEN REPACKAGED
+---------------------------
+The .xcodeproj and PRIMALMACRO folders are now AT THE ROOT of the ZIP.
+It also contains codemagic.yaml.
+Do not upload the ZIP itself as a lone file to GitHub.
+
+RELIABLE UPLOAD: GITHUB DESKTOP (Windows)
+----------------------------------------
+1. Extract this ZIP on your Windows computer to a folder.
+2. Open GitHub Desktop and sign in.
+3. File > Clone repository > URL.
+4. URL: https://github.com/Themachine1979/PRIMALMACRO-iOS
+5. Choose a local destination and click Clone.
+6. Open the cloned folder in File Explorer (Repository > Show in Explorer).
+7. Copy ALL the extracted ZIP CONTENTS (not the enclosing folder) into
+   the cloned folder. Approve Replace for duplicate README/YAML files.
+8. GitHub Desktop: enter summary 'Add PRIMALMACRO Xcode source'.
+9. Click Commit to main, then Push origin.
+10. On GitHub's Code tab, confirm you see both:
+      PRIMALMACRO.xcodeproj/project.pbxproj
+      PRIMALMACRO/PrimalMacroApp.swift
+11. Return to Codemagic and Start new build for 'PRIMALMACRO - iOS compile check'.
+
+NOTE: This is an UNSIGNED compilation check, not a TestFlight IPA build.
+A valid iPhone distribution configuration, Apple signing, and bundle ID
+are necessary before TestFlight.
+
+BEFORE LAUNCH: Do not commit API keys or signing credentials to GitHub.
+Consider making the repository PRIVATE to protect original source code.

@@ -1,0 +1,211 @@
+// !$*UTF8*$!
+{
+  archiveVersion = 1;
+  classes = {};
+  objectVersion = 60;
+  objects = {
+
+/* Begin PBXBuildFile section */
+    52EB1EBDECFA0F252328F50A /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EB0F3EB7EE9FECCC403D934 /* AppStore.swift */; };
+    16F7B2CC4ABB9BAD0B1834B9 /* Design.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBE28C419942BEA9F20CDA12 /* Design.swift */; };
+    201E2358DE03663C66F578B0 /* DiaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C1B509304E162F6D0F8C05 /* DiaryView.swift */; };
+    241238FBDDCDBC7F7B816D6E /* FoodEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D530D6EF56ADC7530FD3B194 /* FoodEditorView.swift */; };
+    5849B9BA8A5135A6866250C7 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBACC8B3694DC38CFE7A1FBB /* HomeView.swift */; };
+    432E18A7DFD0B736C7BB2626 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC2BB1504D5DD6C3DB331D9A /* MainTabView.swift */; };
+    88E2F219C70EB8A79585E993 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CE8A17BCC0108CFB4DEF43E /* Models.swift */; };
+    5408C07E819CA89CAB4DE858 /* NutritionMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = D58545D25C60579A70AE8565 /* NutritionMath.swift */; };
+    3FE047222D21952AF82EE2BD /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E7F366D9F9B627600DB43EF /* OnboardingView.swift */; };
+    972297349DFDC216DB015E07 /* PlanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94FFB872214B537573AFA8B4 /* PlanView.swift */; };
+    2403AFBBB8AC258C683E03C0 /* PrimalMacroApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D3817DAE534E137776DB563 /* PrimalMacroApp.swift */; };
+    7C23BEE943A65DC3B4E1EF13 /* ProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5695CDD8C2B37EB4FE9C33DD /* ProgressView.swift */; };
+    F47C31EB234E0080B7625F54 /* ScanClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 633799881B3383D1411A5B79 /* ScanClient.swift */; };
+    63BCE19E51A061BD0D85CA28 /* ScannerSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC5AC82D26E0CBF3762D8B40 /* ScannerSettingsView.swift */; };
+    317FCDF3137D59ADA95263B8 /* ScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A9CE8553A1ECDF772344D03 /* ScannerView.swift */; };
+    3133AFCB065D8F0449FFB994 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5DB17CAB5299B3CE0FA8849A /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+    4EB0F3EB7EE9FECCC403D934 /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
+    CBE28C419942BEA9F20CDA12 /* Design.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Design.swift; sourceTree = "<group>"; };
+    06C1B509304E162F6D0F8C05 /* DiaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryView.swift; sourceTree = "<group>"; };
+    D530D6EF56ADC7530FD3B194 /* FoodEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodEditorView.swift; sourceTree = "<group>"; };
+    DBACC8B3694DC38CFE7A1FBB /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+    FC2BB1504D5DD6C3DB331D9A /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+    9CE8A17BCC0108CFB4DEF43E /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+    D58545D25C60579A70AE8565 /* NutritionMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionMath.swift; sourceTree = "<group>"; };
+    9E7F366D9F9B627600DB43EF /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+    94FFB872214B537573AFA8B4 /* PlanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanView.swift; sourceTree = "<group>"; };
+    1D3817DAE534E137776DB563 /* PrimalMacroApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimalMacroApp.swift; sourceTree = "<group>"; };
+    5695CDD8C2B37EB4FE9C33DD /* ProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressView.swift; sourceTree = "<group>"; };
+    633799881B3383D1411A5B79 /* ScanClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanClient.swift; sourceTree = "<group>"; };
+    DC5AC82D26E0CBF3762D8B40 /* ScannerSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannerSettingsView.swift; sourceTree = "<group>"; };
+    9A9CE8553A1ECDF772344D03 /* ScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannerView.swift; sourceTree = "<group>"; };
+    5DB17CAB5299B3CE0FA8849A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Resources/Assets.xcassets"; sourceTree = "<group>"; };
+    2F523E88044CECE9D38F25B9 /* PRIMALMACRO.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PRIMALMACRO.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+    B6F88989ED250F8C9EB969FA /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+    E58918C284069AFFF2CF9E02 = {isa = PBXGroup; children = (157F658B111B8A10A285B183 /* PRIMALMACRO */, 4C90435B9C2A68F28C1039D7 /* Products */, ); sourceTree = "<group>"; };
+    157F658B111B8A10A285B183 /* PRIMALMACRO */ = {isa = PBXGroup; children = (
+      4EB0F3EB7EE9FECCC403D934 /* AppStore.swift */,
+      CBE28C419942BEA9F20CDA12 /* Design.swift */,
+      06C1B509304E162F6D0F8C05 /* DiaryView.swift */,
+      D530D6EF56ADC7530FD3B194 /* FoodEditorView.swift */,
+      DBACC8B3694DC38CFE7A1FBB /* HomeView.swift */,
+      FC2BB1504D5DD6C3DB331D9A /* MainTabView.swift */,
+      9CE8A17BCC0108CFB4DEF43E /* Models.swift */,
+      D58545D25C60579A70AE8565 /* NutritionMath.swift */,
+      9E7F366D9F9B627600DB43EF /* OnboardingView.swift */,
+      94FFB872214B537573AFA8B4 /* PlanView.swift */,
+      1D3817DAE534E137776DB563 /* PrimalMacroApp.swift */,
+      5695CDD8C2B37EB4FE9C33DD /* ProgressView.swift */,
+      633799881B3383D1411A5B79 /* ScanClient.swift */,
+      DC5AC82D26E0CBF3762D8B40 /* ScannerSettingsView.swift */,
+      9A9CE8553A1ECDF772344D03 /* ScannerView.swift */,
+      5DB17CAB5299B3CE0FA8849A /* Assets.xcassets */,
+    ); path = PRIMALMACRO; sourceTree = "<group>"; };
+    4C90435B9C2A68F28C1039D7 /* Products */ = {isa = PBXGroup; children = (2F523E88044CECE9D38F25B9 /* PRIMALMACRO.app */, ); name = Products; sourceTree = "<group>"; };
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+    4FD89C8088EF532DD318AF05 /* PRIMALMACRO */ = {
+      isa = PBXNativeTarget;
+      buildConfigurationList = 979AAEF0BCF4368688A0EBEB /* Build configuration list for PBXNativeTarget "PRIMALMACRO" */;
+      buildPhases = (3ECEE8DB1D900FED06C6FBC8 /* Sources */, B6F88989ED250F8C9EB969FA /* Frameworks */, 9329A539F308EBCD827166C4 /* Resources */, );
+      buildRules = ();
+      dependencies = ();
+      name = PRIMALMACRO;
+      productName = PRIMALMACRO; productReference = 2F523E88044CECE9D38F25B9 /* PRIMALMACRO.app */;
+      productType = "com.apple.product-type.application";
+    };
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+    667B73A087936CE37A758488 /* Project object */ = {
+      isa = PBXProject;
+      attributes = {
+        BuildIndependentTargetsInParallel = YES;
+        LastUpgradeCheck = 1500;
+        TargetAttributes = { 4FD89C8088EF532DD318AF05 = { CreatedOnToolsVersion = 15.0; }; };
+      };
+      buildConfigurationList = 779A7161B62B007D8DB3B489 /* Build configuration list for PBXProject "PRIMALMACRO" */;
+      compatibilityVersion = "Xcode 15.0";
+      developmentRegion = en;
+      hasScannedForEncodings = 0;
+      knownRegions = (en, Base);
+      mainGroup = E58918C284069AFFF2CF9E02;
+      productRefGroup = 4C90435B9C2A68F28C1039D7 /* Products */;
+      projectDirPath = "";
+      projectRoot = "";
+      targets = (4FD89C8088EF532DD318AF05 /* PRIMALMACRO */, );
+    };
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+    9329A539F308EBCD827166C4 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (3133AFCB065D8F0449FFB994 /* Assets.xcassets in Resources */, ); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+    3ECEE8DB1D900FED06C6FBC8 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
+      52EB1EBDECFA0F252328F50A /* AppStore.swift in Sources */,
+      16F7B2CC4ABB9BAD0B1834B9 /* Design.swift in Sources */,
+      201E2358DE03663C66F578B0 /* DiaryView.swift in Sources */,
+      241238FBDDCDBC7F7B816D6E /* FoodEditorView.swift in Sources */,
+      5849B9BA8A5135A6866250C7 /* HomeView.swift in Sources */,
+      432E18A7DFD0B736C7BB2626 /* MainTabView.swift in Sources */,
+      88E2F219C70EB8A79585E993 /* Models.swift in Sources */,
+      5408C07E819CA89CAB4DE858 /* NutritionMath.swift in Sources */,
+      3FE047222D21952AF82EE2BD /* OnboardingView.swift in Sources */,
+      972297349DFDC216DB015E07 /* PlanView.swift in Sources */,
+      2403AFBBB8AC258C683E03C0 /* PrimalMacroApp.swift in Sources */,
+      7C23BEE943A65DC3B4E1EF13 /* ProgressView.swift in Sources */,
+      F47C31EB234E0080B7625F54 /* ScanClient.swift in Sources */,
+      63BCE19E51A061BD0D85CA28 /* ScannerSettingsView.swift in Sources */,
+      317FCDF3137D59ADA95263B8 /* ScannerView.swift in Sources */,
+    ); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+    400A57A510AD40C550BC8CF6 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {
+      ALWAYS_SEARCH_USER_PATHS = NO;
+      CLANG_ENABLE_MODULES = YES;
+      CODE_SIGN_STYLE = Automatic;
+      SDKROOT = iphoneos;
+      SWIFT_VERSION = 5.0;
+      IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+      DEBUG_INFORMATION_FORMAT = dwarf;
+      GCC_OPTIMIZATION_LEVEL = 0;
+      SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+    }; name = Debug; };
+    02067DACC0021E68ED23A6DD /* Release */ = {isa = XCBuildConfiguration; buildSettings = {
+      ALWAYS_SEARCH_USER_PATHS = NO;
+      CLANG_ENABLE_MODULES = YES;
+      CODE_SIGN_STYLE = Automatic;
+      SDKROOT = iphoneos;
+      SWIFT_VERSION = 5.0;
+      IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+      DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+      SWIFT_COMPILATION_MODE = wholemodule;
+    }; name = Release; };
+    C8A71A5CE922C2F309D53102 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {
+      ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+      CODE_SIGN_STYLE = Automatic;
+      CURRENT_PROJECT_VERSION = 1;
+      DEVELOPMENT_TEAM = "";
+      GENERATE_INFOPLIST_FILE = YES;
+      INFOPLIST_KEY_CFBundleDisplayName = PRIMALMACRO;
+      INFOPLIST_KEY_NSCameraUsageDescription = "Capture food, menus, and labels to estimate nutrition.";
+      INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+      INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+      INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
+      INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+      IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+      LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+      MARKETING_VERSION = 0.1.0;
+      PRODUCT_BUNDLE_IDENTIFIER = uk.example.primalmacro;
+      PRODUCT_NAME = "$(TARGET_NAME)";
+      SDKROOT = iphoneos;
+      SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+      SUPPORTS_MACCATALYST = NO;
+      SWIFT_EMIT_LOC_STRINGS = YES;
+      SWIFT_VERSION = 5.0;
+      TARGETED_DEVICE_FAMILY = 1;
+    }; name = Debug; };
+    FC2DD77BC95226A3B6DC0CC3 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {
+      ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+      CODE_SIGN_STYLE = Automatic;
+      CURRENT_PROJECT_VERSION = 1;
+      DEVELOPMENT_TEAM = "";
+      GENERATE_INFOPLIST_FILE = YES;
+      INFOPLIST_KEY_CFBundleDisplayName = PRIMALMACRO;
+      INFOPLIST_KEY_NSCameraUsageDescription = "Capture food, menus, and labels to estimate nutrition.";
+      INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+      INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+      INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
+      INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+      IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+      LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+      MARKETING_VERSION = 0.1.0;
+      PRODUCT_BUNDLE_IDENTIFIER = uk.example.primalmacro;
+      PRODUCT_NAME = "$(TARGET_NAME)";
+      SDKROOT = iphoneos;
+      SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+      SUPPORTS_MACCATALYST = NO;
+      SWIFT_EMIT_LOC_STRINGS = YES;
+      SWIFT_VERSION = 5.0;
+      TARGETED_DEVICE_FAMILY = 1;
+    }; name = Release; };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+    779A7161B62B007D8DB3B489 /* Build configuration list for PBXProject "PRIMALMACRO" */ = {isa = XCConfigurationList; buildConfigurations = (400A57A510AD40C550BC8CF6 /* Debug */, 02067DACC0021E68ED23A6DD /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+    979AAEF0BCF4368688A0EBEB /* Build configuration list for PBXNativeTarget "PRIMALMACRO" */ = {isa = XCConfigurationList; buildConfigurations = (C8A71A5CE922C2F309D53102 /* Debug */, FC2DD77BC95226A3B6DC0CC3 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+  };
+  rootObject = 667B73A087936CE37A758488 /* Project object */;
+}
