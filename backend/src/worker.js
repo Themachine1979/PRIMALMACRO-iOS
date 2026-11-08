@@ -24,7 +24,7 @@ function startupFailureCode(env) {
   if (!env.APP_STORE_PRIVATE_KEY || !env.APP_STORE_KEY_ID || !env.APP_STORE_ISSUER_ID) {
     return 'CONFIG_APP_STORE_KEYS';
   }
-  if (!['Sandbox', 'Production'].includes(env.APP_STORE_ENVIRONMENT)) {
+  if (!['Sandbox', 'Production', 'Auto'].includes(env.APP_STORE_ENVIRONMENT)) {
     return 'CONFIG_APP_STORE_ENV';
   }
   if (!env.SCAN_RATE_LIMIT) return 'CONFIG_RATE_LIMIT_BINDING';
