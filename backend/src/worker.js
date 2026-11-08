@@ -1,7 +1,11 @@
+import { AccessError, authenticate, challenge, checkEntitlement, session } from './access.js';
+import { scanState } from './state.js';
+export { ScanState } from './state.js';
+
 // PRIMALMACRO private image-analysis proxy. No OpenAI key is ever sent to iOS.
-const MODEL = 'gpt-4.1-mini';
-const MAX_BODY_CHARS = 11_000_000;
-const MAX_IMAGE_CHARS = 10_700_000;
+const MODEL = 'gpt-4.1-mini-2025-04-14';
+const MAX_IMAGE_CHARS = 2_800_000;
+const MAX_BODY_BYTES = MAX_IMAGE_CHARS + 1024;
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -43,77 +47,116 @@ export function sanitizeFoods(input) {
   })).filter(f => f.name.length > 0);
 }
 
+async function readJSON(request, maxBytes) {
+  if (Number(request.headers.get('content-length')) > maxBytes) {
+    throw new AccessError(413, 'Request too large.');
+  }
+  const reader = request.body?.getReader();
+  if (!reader) throw new AccessError(400, 'Missing request body.');
+  const decoder = new TextDecoder('utf-8', { fatal: true });
+  let raw = '', size = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > maxBytes) {
+        void reader.cancel().catch(() => {});
+        throw new AccessError(413, 'Request too large.');
+      }
+      raw += decoder.decode(value, { stream: true });
+    }
+    return JSON.parse(raw + decoder.decode());
+  } catch (error) {
+    if (error instanceof AccessError) throw error;
+    throw new AccessError(400, 'Invalid request body.');
+  }
+}
+
 export default {
   async fetch(request, env) {
-    const url = new URL(request.url);
-    if (request.method === 'GET' && url.pathname === '/health') {
+    const { pathname } = new URL(request.url);
+    if (request.method === 'GET' && pathname === '/health') {
       return json({ ok: true, app: 'PRIMALMACRO-scanner' });
     }
-    if (request.method !== 'POST' || url.pathname !== '/scan') {
+    if (request.method !== 'POST' || !['/challenge', '/session', '/scan'].includes(pathname)) {
       return json({ error: 'Not found' }, 404);
     }
-    // Private beta mode only. Do not turn this on for a public launch:
-    // server-side Apple subscription verification + per-user quotas are required.
-    if (!env.OPENAI_API_KEY || env.BETA_SCANS_ENABLED !== 'true' || !env.SCAN_RATE_LIMIT) {
-      return json({ error: 'Scanner is not configured for beta use' }, 503);
-    }
-    // Approximate Cloudflare POP-local throttling limits accidental API spending.
-    // IP-based limiting can affect people sharing an address and is not strong authentication.
-    const sourceIP = request.headers.get('cf-connecting-ip') || 'unknown-client';
-    const { success } = await env.SCAN_RATE_LIMIT.limit({ key: sourceIP });
-    if (!success) {
-      return json({ error: 'Too many scans. Try again shortly.' }, 429);
-    }
-    const length = Number(request.headers.get('content-length') || 0);
-    if (length > MAX_BODY_CHARS) return json({ error: 'Image too large' }, 413);
-    let input;
-    try {
-      const raw = await request.text();
-      if (raw.length > MAX_BODY_CHARS) return json({ error: 'Image too large' }, 413);
-      input = JSON.parse(raw);
-    } catch { return json({ error: 'Invalid request body' }, 400); }
-    if (!['food', 'menu', 'packaging'].includes(input?.mode) ||
-        typeof input?.imageBase64 !== 'string' ||
-        input.imageBase64.length < 32 || input.imageBase64.length > MAX_IMAGE_CHARS ||
-        !/^[A-Za-z0-9+/]+={0,2}$/.test(input.imageBase64)) {
-      return json({ error: 'Invalid mode or image' }, 400);
+    if (env.SCANS_ENABLED !== 'true' || !env.OPENAI_API_KEY || !(env.SESSION_SECRET?.length >= 43) ||
+        !env.APP_STORE_PRIVATE_KEY || !env.APP_STORE_KEY_ID || !env.APP_STORE_ISSUER_ID ||
+        !['Sandbox', 'Production'].includes(env.APP_STORE_ENVIRONMENT) ||
+        !env.SCAN_RATE_LIMIT || !env.SCAN_STATE) {
+      return json({ error: 'Scanner is temporarily unavailable.' }, 503);
     }
 
-    const aiBody = {
-      model: MODEL,
-      temperature: 0.2,
-      max_completion_tokens: 1400,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: [
-          { type: 'text', text: `Mode: ${input.mode}. Estimate or transcribe nutritional content from this photo. Be explicit about uncertainty.` },
-          { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${input.imageBase64}`, detail: 'high' } }
-        ] }
-      ]
-    };
-    let response;
     try {
-      response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${env.OPENAI_API_KEY}` },
-        body: JSON.stringify(aiBody),
-        signal: AbortSignal.timeout(35_000)
-      });
-    } catch { return json({ error: 'AI service unavailable' }, 502); }
-    if (!response.ok) return json({ error: 'AI service request failed' }, 502);
+      const sourceIP = request.headers.get('cf-connecting-ip') || 'unknown-client';
+      if (!(await env.SCAN_RATE_LIMIT.limit({ key: 'ip:' + sourceIP })).success) {
+        return json({ error: 'Too many requests. Try again shortly.' }, 429);
+      }
+      if (pathname === '/challenge') return json(await challenge(env));
+      const state = scanState(env);
+      if (pathname === '/session') return json(await session(env, await readJSON(request, 8192), state));
 
-    try {
-      const result = await response.json();
-      const content = result?.choices?.[0]?.message?.content;
-      if (typeof content !== 'string') throw new Error('Missing response text');
-      const parsed = JSON.parse(content);
-      return json({
-        foods: sanitizeFoods(parsed.foods),
-        disclaimer: typeof parsed.disclaimer === 'string'
-          ? parsed.disclaimer.slice(0, 240)
-          : 'AI estimates require verification before logging.'
-      });
-    } catch { return json({ error: 'Could not parse AI nutrition analysis' }, 502); }
+      const subject = await authenticate(env, request);
+      if (!(await env.SCAN_RATE_LIMIT.limit({ key: 'member:' + subject })).success) {
+        return json({ error: 'Too many requests. Try again shortly.' }, 429);
+      }
+      const input = await readJSON(request, MAX_BODY_BYTES);
+      if (!['food', 'menu', 'packaging'].includes(input?.mode) ||
+          typeof input.imageBase64 !== 'string' || input.imageBase64.length > MAX_IMAGE_CHARS ||
+          input.imageBase64.length < 32 || input.imageBase64.length % 4 !== 0 ||
+          !/^\/9j\/[A-Za-z0-9+/]+={0,2}$/.test(input.imageBase64)) {
+        return json({ error: 'Invalid mode or JPEG image.' }, 400);
+      }
+      if (!await checkEntitlement(env, subject, input.transactionID)) {
+        return json({ error: 'No active linked subscription.' }, 403);
+      }
+      if (!await state.reserve(subject)) return json({ error: 'Scan limit reached.' }, 429);
+      return await analyze(input, env);
+    } catch (error) {
+      if (error instanceof AccessError) return json({ error: error.message }, error.status);
+      return json({ error: 'Scanner is temporarily unavailable.' }, 503);
+    }
   }
 };
+
+async function analyze(input, env) {
+  const aiBody = {
+    model: MODEL,
+    temperature: 0.2,
+    max_completion_tokens: 1400,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: [
+        { type: 'text', text: `Mode: ${input.mode}. Estimate or transcribe nutritional content from this photo. Be explicit about uncertainty.` },
+        { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${input.imageBase64}`, detail: 'high' } }
+      ] }
+    ]
+  };
+  let response;
+  try {
+    response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${env.OPENAI_API_KEY}` },
+      body: JSON.stringify(aiBody),
+      redirect: 'error',
+    signal: AbortSignal.timeout(35_000)
+    });
+  } catch { return json({ error: 'AI service unavailable' }, 502); }
+  if (!response.ok) return json({ error: 'AI service request failed' }, 502);
+
+  try {
+    const result = await response.json();
+    const content = result?.choices?.[0]?.message?.content;
+    if (typeof content !== 'string') throw new Error('Missing response text');
+    const parsed = JSON.parse(content);
+    return json({
+      foods: sanitizeFoods(parsed.foods),
+      disclaimer: typeof parsed.disclaimer === 'string'
+        ? parsed.disclaimer.slice(0, 240)
+        : 'AI estimates require verification before logging.'
+    });
+  } catch { return json({ error: 'Could not parse AI nutrition analysis' }, 502); }
+}

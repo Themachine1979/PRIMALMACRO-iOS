@@ -1,5 +1,4 @@
-# PRIMALMACRO iOS - unsigned simulator compile check.
-# TestFlight requires a separate signed distribution workflow after this compiles.
+# PRIMALMACRO iOS - unsigned checks and a manually started TestFlight archive.
 workflows:
   primalmacro-ios-check:
     name: PRIMALMACRO - iOS compile check
@@ -7,6 +6,7 @@ workflows:
     instance_type: mac_mini_m2
     environment:
       xcode: latest
+      node: 24
     scripts:
       - name: Check Xcode project and scheme
         script: |
@@ -15,6 +15,12 @@ workflows:
             exit 1
           }
           xcodebuild -list -project "$CM_BUILD_DIR/PRIMALMACRO.xcodeproj"
+      - name: Run local nutrition and Worker tests
+        script: |
+          set -e
+          xcrun swiftc PRIMALMACRO/Models.swift PRIMALMACRO/NutritionMath.swift tests/NutritionMathTests.swift -o /tmp/primalmacro-nutrition-tests
+          /tmp/primalmacro-nutrition-tests
+          (cd backend && npm test)
       - name: Compile for iPhone simulator (no signing)
         script: |
           xcodebuild \
@@ -31,7 +37,7 @@ workflows:
       - /tmp/xcodebuild_logs/*.log
 
   primalmacro-ios-testflight:
-    name: PRIMALMACRO - signed TestFlight upload
+    name: PRIMALMACRO - signed TestFlight archive
     max_build_duration: 90
     instance_type: mac_mini_m2
     # This integration name must exactly match the API key name in
@@ -54,25 +60,27 @@ workflows:
         script: |
           python3 - <<'PY'
           import os
+          import re
           from pathlib import Path
-          from urllib.parse import urlparse
           url = os.environ.get("PM_SCANNER_URL", "").strip()
           project = Path("PRIMALMACRO.xcodeproj/project.pbxproj")
-          if not url:
-              print("PM_SCANNER_URL not set; scanner will show temporarily unavailable.")
-          else:
-              parsed = urlparse(url)
-              if parsed.scheme != "https" or not parsed.hostname or not parsed.path.endswith("/scan"):
-                  raise SystemExit("PM_SCANNER_URL must be a full HTTPS URL ending in /scan")
-              source = project.read_text()
-              placeholder = "PM_SCANNER_ENDPOINT_PLACEHOLDER"
-              if source.count(placeholder) != 2:
-                  raise SystemExit("Expected scanner placeholder in both Xcode build configurations")
-              project.write_text(source.replace(placeholder, url))
-              print("Customer scanner URL configured at build time (no API keys in app).")
+          source = project.read_text()
+          build = os.environ.get("PM_BUILD_NUMBER", "")
+          if not re.fullmatch(r"[1-9][0-9]*", build):
+              raise SystemExit("Set PM_BUILD_NUMBER to an unused positive build number in App Store Connect")
+          source, count = re.subn(r"CURRENT_PROJECT_VERSION = [0-9]+;", f"CURRENT_PROJECT_VERSION = {build};", source)
+          if count != 2:
+              raise SystemExit("Expected build number in both Xcode configurations")
+          if url and not re.fullmatch(r"https://[a-zA-Z0-9.-]+/scan", url):
+              raise SystemExit("PM_SCANNER_URL must be a full HTTPS URL ending in /scan")
+          placeholder = "PM_SCANNER_ENDPOINT_PLACEHOLDER"
+          if source.count(placeholder) != 2:
+              raise SystemExit("Expected scanner placeholder in both Xcode configurations")
+          project.write_text(source.replace(placeholder, url))
           PY
       - name: Apply Apple distribution provisioning profile
-        script: xcode-project use-profiles
+        script: |
+          xcode-project use-profiles --custom-export-options='{"testFlightInternalTestingOnly": true}'
       - name: Create signed iPhone IPA
         script: |
           xcode-project build-ipa \
@@ -81,10 +89,3 @@ workflows:
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
-    publishing:
-      app_store_connect:
-        auth: integration
-        # Upload to App Store Connect/TestFlight processing only.
-        # Do not submit for public App Store review or external beta review.
-        submit_to_testflight: false
-        submit_to_app_store: false

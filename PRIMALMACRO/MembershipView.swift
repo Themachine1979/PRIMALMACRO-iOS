@@ -2,6 +2,7 @@ import SwiftUI
 import AuthenticationServices
 import StoreKit
 import Combine
+import CryptoKit
 
 // PRIMALMACRO v0.2: Apple-only sign-in. Google can be added later.
 @MainActor
@@ -10,13 +11,28 @@ final class AppleMemberSession: ObservableObject {
     @Published var errorMessage: String?
     private let userIDKey = "primalmacro.apple.user.id"
 
+    var userID: String? { UserDefaults.standard.string(forKey: userIDKey) }
+
+    var accountToken: UUID? {
+        guard let userID else { return nil }
+        var bytes = Array(SHA256.hash(data: Data("primalmacro.storekit.v1:\(userID)".utf8)).prefix(16))
+        bytes[6] = (bytes[6] & 15) | 128
+        bytes[8] = (bytes[8] & 63) | 128
+        return UUID(uuid: (bytes[0], bytes[1], bytes[2], bytes[3],
+                           bytes[4], bytes[5], bytes[6], bytes[7],
+                           bytes[8], bytes[9], bytes[10], bytes[11],
+                           bytes[12], bytes[13], bytes[14], bytes[15]))
+    }
+
     func restore() async {
         guard let id = UserDefaults.standard.string(forKey: userIDKey) else { return }
         do {
-            signedIn = try await ASAuthorizationAppleIDProvider()
-                .credentialState(forUserID: id) == .authorized
+            let state = try await ASAuthorizationAppleIDProvider().credentialState(forUserID: id)
+            guard userID == id else { return }
+            signedIn = state == .authorized
+            if state == .revoked || state == .notFound { signOut() }
         } catch {
-            signedIn = false
+            if userID == id { signedIn = false }
         }
     }
 
@@ -28,6 +44,7 @@ final class AppleMemberSession: ObservableObject {
                 errorMessage = "Apple did not return a valid sign-in credential."
                 return
             }
+            if userID != credential.user { ScannerSession.clear() }
             UserDefaults.standard.set(credential.user, forKey: userIDKey)
             signedIn = true
             errorMessage = nil
@@ -39,6 +56,7 @@ final class AppleMemberSession: ObservableObject {
     }
 
     func signOut() {
+        ScannerSession.clear()
         UserDefaults.standard.removeObject(forKey: userIDKey)
         signedIn = false
     }
@@ -53,7 +71,16 @@ final class MembershipPlans: ObservableObject {
     @Published private(set) var ready = false
     @Published private(set) var products: [Product] = []
     @Published private(set) var trialEligibleIDs: Set<String> = []
-    @Published private(set) var hasEntitlement = false
+    @Published private(set) var activeTransactions: [StoreKit.Transaction] = []
+    @Published private(set) var loadingProducts = false
+
+    func hasEntitlement(for token: UUID?) -> Bool {
+        activeTransactions.contains { $0.appAccountToken == nil || $0.appAccountToken == token }
+    }
+
+    func scanTransaction(for token: UUID) -> StoreKit.Transaction? {
+        activeTransactions.first { $0.appAccountToken == token && $0.ownershipType == .purchased }
+    }
     @Published var selectedID = yearlyID
     @Published var purchasing = false
     @Published var message: String?
@@ -63,7 +90,7 @@ final class MembershipPlans: ObservableObject {
         guard !ready else { return }
         if transactionTask == nil {
             transactionTask = Task { [weak self] in
-                for await update in Transaction.updates {
+                for await update in StoreKit.Transaction.updates {
                     if case .verified(let transaction) = update {
                         await transaction.finish()
                     }
@@ -77,8 +104,14 @@ final class MembershipPlans: ObservableObject {
     }
 
     func loadProducts() async {
+        guard !loadingProducts else { return }
+        loadingProducts = true
+        defer { loadingProducts = false }
         do {
             products = try await Product.products(for: Array(Self.ids))
+            if product(selectedID) == nil, let available = products.first {
+                selectedID = available.id
+            }
             if products.isEmpty {
                 message = "Monthly and yearly plans haven't been configured in App Store Connect yet."
             } else {
@@ -91,12 +124,15 @@ final class MembershipPlans: ObservableObject {
                       offer.paymentMode == .freeTrial,
                       offer.period.unit == .week,
                       offer.period.value == 2 else { continue }
-                if await subscription.isEligibleForIntroOffer {
+                let isEligible = await subscription.isEligibleForIntroOffer
+                if isEligible {
                     eligible.insert(product.id)
                 }
             }
             trialEligibleIDs = eligible
         } catch {
+            products = []
+            trialEligibleIDs = []
             message = "Couldn't load Apple subscription prices. Check your internet connection."
         }
     }
@@ -104,24 +140,25 @@ final class MembershipPlans: ObservableObject {
     func product(_ id: String) -> Product? { products.first { $0.id == id } }
 
     func refreshEntitlement() async {
-        var active = false
-        for await entitlement in Transaction.currentEntitlements {
+        var active: [StoreKit.Transaction] = []
+        for await entitlement in StoreKit.Transaction.currentEntitlements {
             guard case .verified(let transaction) = entitlement,
                   Self.ids.contains(transaction.productID),
-                  transaction.revocationDate == nil else { continue }
+                  transaction.revocationDate == nil, !transaction.isUpgraded else { continue }
             if transaction.expirationDate.map({ $0 > Date() }) ?? false {
-                active = true
+                active.append(transaction)
             }
         }
-        hasEntitlement = active
+        activeTransactions = active
     }
 
-    func purchase() async {
+    func purchase(accountToken: UUID) async {
         guard !purchasing, let selected = product(selectedID) else { return }
         purchasing = true
+        message = nil
         defer { purchasing = false }
         do {
-            let result = try await selected.purchase()
+            let result = try await selected.purchase(options: [.appAccountToken(accountToken)])
             switch result {
             case .success(let verification):
                 switch verification {
@@ -143,11 +180,15 @@ final class MembershipPlans: ObservableObject {
         }
     }
 
-    func restorePurchases() async {
+    func restorePurchases(accountToken: UUID?) async {
+        guard !purchasing else { return }
+        purchasing = true
+        message = nil
+        defer { purchasing = false }
         do {
             try await StoreKit.AppStore.sync()
             await refreshEntitlement()
-            if !hasEntitlement {
+            if !hasEntitlement(for: accountToken) {
                 message = "No active PRIMALMACRO subscription was found for this Apple account."
             }
         } catch {
@@ -172,7 +213,7 @@ struct MembershipGateView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(PM.background)
-            } else if !member.signedIn || !plans.hasEntitlement {
+            } else if !member.signedIn || !plans.hasEntitlement(for: member.accountToken) {
                 MembershipLandingView()
             } else if appStore.profile == nil {
                 OnboardingView()
@@ -243,9 +284,7 @@ private struct MembershipLandingView: View {
                 .background(PM.surface, in: RoundedRectangle(cornerRadius: 18))
 
                 if !member.signedIn {
-                    SignInWithAppleButton(.signIn, onRequest: { request in
-                        request.requestedScopes = [.fullName, .email]
-                    }, onCompletion: member.completeAppleSignIn)
+                    SignInWithAppleButton(.signIn, onRequest: { _ in }, onCompletion: member.completeAppleSignIn)
                         .signInWithAppleButtonStyle(.white)
                         .frame(height: 54)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -259,7 +298,8 @@ private struct MembershipLandingView: View {
                         icon: "bolt.fill",
                         enabled: plans.product(plans.selectedID) != nil && !plans.purchasing
                     ) {
-                        Task { await plans.purchase() }
+                        guard let accountToken = member.accountToken else { return }
+                        Task { await plans.purchase(accountToken: accountToken) }
                     }
                 }
 
@@ -270,12 +310,17 @@ private struct MembershipLandingView: View {
                     Text(message).font(.caption).foregroundStyle(PM.secondary)
                 }
                 HStack {
-                    Button("Restore Purchases") { Task { await plans.restorePurchases() } }
+                    Button("Restore Purchases") {
+                        Task { await plans.restorePurchases(accountToken: member.accountToken) }
+                    }
+                    .disabled(plans.purchasing || !member.signedIn)
                     Spacer()
                     if member.signedIn {
                         Button("Sign out") { member.signOut() }
-                    } else {
+                    }
+                    if plans.products.count < 2 {
                         Button("Retry Prices") { Task { await plans.loadProducts() } }
+                            .disabled(plans.loadingProducts)
                     }
                 }
                 .font(.footnote.weight(.semibold))
@@ -334,5 +379,7 @@ private struct MembershipLandingView: View {
                         .stroke(selected ? PM.orange : PM.elevated, lineWidth: 2))
         }
         .buttonStyle(.plain)
+        .disabled(plans.product(id) == nil || plans.purchasing)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }

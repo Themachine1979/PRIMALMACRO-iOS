@@ -15,10 +15,13 @@ struct PrimalMacroApp: App {
                 .environmentObject(plans)
                 .preferredColorScheme(.dark)
                 .tint(PM.orange)
-                .background(PM.background)
+                .background { PM.background.ignoresSafeArea() }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
-                        Task { await plans.refreshEntitlement() }
+                        Task {
+                            await member.restore()
+                            await plans.refreshEntitlement()
+                        }
                     }
                 }
                 .alert("Save problem", isPresented: Binding(

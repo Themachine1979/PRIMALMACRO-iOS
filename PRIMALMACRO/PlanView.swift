@@ -4,6 +4,7 @@ import UIKit
 struct PlanView: View {
     @EnvironmentObject private var store: AppStore
     @EnvironmentObject private var member: AppleMemberSession
+    @AppStorage("primalmacro.ai.photoConsent") private var photoConsent = false
     @State private var showEdit = false
     @State private var showDeleteAlert = false
 
@@ -50,6 +51,9 @@ struct PlanView: View {
                         }
                     }
                     settingsButton("Sign out of Apple account", icon: "rectangle.portrait.and.arrow.right") { member.signOut() }
+                    if photoConsent {
+                        settingsButton("Reset AI photo permission", icon: "hand.raised") { photoConsent = false }
+                    }
                     settingsButton("Delete all local data", icon: "trash") { showDeleteAlert = true }
                 }
                 PMPanel {
@@ -72,7 +76,11 @@ struct PlanView: View {
         .sheet(isPresented: $showEdit) { EditProfileView() }
         .confirmationDialog("Delete your diary, profile and weight records from this phone?",
                             isPresented: $showDeleteAlert, titleVisibility: .visible) {
-            Button("Delete all local data", role: .destructive) { store.clearAllData() }
+            Button("Delete all local data", role: .destructive) {
+                store.clearAllData()
+                photoConsent = false
+                member.signOut()
+            }
             Button("Cancel", role: .cancel) {}
         }
     }

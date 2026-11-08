@@ -1,0 +1,161 @@
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+export const bundleID = 'uk.themachine1979.primalmacro';
+const products = new Set([bundleID + '.monthly', bundleID + '.yearly']);
+const now = () => Math.floor(Date.now() / 1000);
+const appleIssuer = 'https://appleid.apple.com';
+
+export class AccessError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.status = status;
+  }
+}
+
+function encode(bytes) {
+  return btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+}
+function decode(value) {
+  if (!/^[\w-]+$/.test(value)) throw new Error('Invalid base64url');
+  return Uint8Array.from(atob(value.replaceAll('-', '+').replaceAll('_', '/')), c => c.charCodeAt(0));
+}
+function parse(value) {
+  return JSON.parse(decoder.decode(decode(value)));
+}
+function segment(value) {
+  return encode(encoder.encode(JSON.stringify(value)));
+}
+async function hmac(env) {
+  return crypto.subtle.importKey('raw', encoder.encode(env.SESSION_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+}
+async function seal(env, claims) {
+  const payload = segment(claims);
+  const signature = await crypto.subtle.sign('HMAC', await hmac(env), encoder.encode(payload));
+  return payload + '.' + encode(new Uint8Array(signature));
+}
+async function unseal(env, token, purpose) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 2 || !await crypto.subtle.verify('HMAC', await hmac(env),
+      decode(parts[1]), encoder.encode(parts[0]))) throw new Error();
+    const claims = parse(parts[0]);
+    if (claims.purpose !== purpose || !Number.isSafeInteger(claims.exp) || claims.exp <= now()) throw new Error();
+    return claims;
+  } catch {
+    throw new AccessError(401, 'Please confirm your Apple sign-in.');
+  }
+}
+
+export async function challenge(env) {
+  const nonce = await seal(env, { purpose: 'challenge', id: crypto.randomUUID(), exp: now() + 300 });
+  return { nonce };
+}
+
+let appleKeys;
+async function appleKey(kid) {
+  if (!appleKeys || appleKeys.expires < now()) {
+    const response = await fetch(appleIssuer + '/auth/keys', {
+      redirect: 'error', signal: AbortSignal.timeout(5000)
+    });
+    if (!response.ok) throw new Error('Apple keys unavailable');
+    appleKeys = { keys: (await response.json()).keys, expires: now() + 300 };
+  }
+  return appleKeys.keys.find(key => key.kid === kid && key.kty === 'RSA' &&
+    key.alg === 'RS256' && key.use === 'sig');
+}
+
+export async function session(env, input, state) {
+  const token = input?.identityToken;
+  const nonce = input?.nonce;
+  if (typeof token !== 'string' || typeof nonce !== 'string') {
+    throw new AccessError(400, 'Missing Apple sign-in details.');
+  }
+  const pending = await unseal(env, nonce, 'challenge');
+  let claims, keyID, signed, signature;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) throw new Error();
+    const header = parse(parts[0]);
+    claims = parse(parts[1]);
+    if (header.alg !== 'RS256' || typeof header.kid !== 'string' ||
+        claims.iss !== appleIssuer || claims.aud !== bundleID ||
+        !Number.isSafeInteger(claims.exp) || claims.exp <= now() ||
+        !Number.isSafeInteger(claims.iat) || claims.iat > now() + 30 || claims.iat < now() - 330 ||
+        claims.nonce !== nonce || typeof claims.sub !== 'string' || !claims.sub || claims.sub.length > 255) {
+      throw new Error();
+    }
+    keyID = header.kid;
+    signed = encoder.encode(parts.slice(0, 2).join('.'));
+    signature = decode(parts[2]);
+  } catch {
+    throw new AccessError(401, 'Apple sign-in could not be verified.');
+  }
+  const jwk = await appleKey(keyID);
+  const algorithm = { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' };
+  if (!jwk || !await crypto.subtle.verify(algorithm,
+    await crypto.subtle.importKey('jwk', jwk, algorithm, false, ['verify']), signature, signed)) {
+    throw new AccessError(401, 'Apple sign-in could not be verified.');
+  }
+  if (!await state.consume(pending.id, pending.exp)) {
+    throw new AccessError(401, 'Please confirm your Apple sign-in again.');
+  }
+  const exp = now() + 86_400;
+  return { token: await seal(env, { purpose: 'session', sub: claims.sub, exp }), expiresAt: exp };
+}
+
+export async function authenticate(env, request) {
+  const bearer = request.headers.get('authorization')?.match(/^Bearer ([\w.-]{1,2048})$/);
+  if (!bearer) throw new AccessError(401, 'Please confirm your Apple sign-in.');
+  return (await unseal(env, bearer[1], 'session')).sub;
+}
+
+export async function accountToken(subject) {
+  const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256',
+    encoder.encode('primalmacro.storekit.v1:' + subject))).slice(0, 16);
+  bytes[6] = (bytes[6] & 15) | 128; // Application-defined UUID version 8.
+  bytes[8] = (bytes[8] & 63) | 128;
+  const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+  return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join('-');
+}
+
+async function storeAPIJWT(env) {
+  const pem = env.APP_STORE_PRIVATE_KEY.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s/g, '');
+  const algorithm = { name: 'ECDSA', namedCurve: 'P-256' };
+  const key = await crypto.subtle.importKey('pkcs8', Uint8Array.from(atob(pem), c => c.charCodeAt(0)),
+    algorithm, false, ['sign']);
+  const unsigned = segment({ alg: 'ES256', kid: env.APP_STORE_KEY_ID, typ: 'JWT' }) + '.' +
+    segment({ iss: env.APP_STORE_ISSUER_ID, iat: now(), exp: now() + 120, aud: 'appstoreconnect-v1', bid: bundleID });
+  const signature = await crypto.subtle.sign({ ...algorithm, hash: 'SHA-256' }, key, encoder.encode(unsigned));
+  return unsigned + '.' + encode(new Uint8Array(signature));
+}
+
+export async function checkEntitlement(env, subject, transactionID) {
+  if (typeof transactionID !== 'string' || !/^\d{1,24}$/.test(transactionID)) {
+    throw new AccessError(400, 'Missing subscription information.');
+  }
+  const sandbox = env.APP_STORE_ENVIRONMENT === 'Sandbox';
+  const host = sandbox ? 'api.storekit-sandbox.apple.com' : 'api.storekit.apple.com';
+  const response = await fetch('https://' + host + '/inApps/v1/subscriptions/' + transactionID, {
+    headers: { authorization: 'Bearer ' + await storeAPIJWT(env) },
+    redirect: 'error', signal: AbortSignal.timeout(8000)
+  });
+  if (response.status === 404) return false;
+  if (!response.ok) throw new Error('Apple subscription lookup unavailable');
+  const status = await response.json();
+  if (status.bundleId !== bundleID || status.environment !== env.APP_STORE_ENVIRONMENT) return false;
+  const expected = await accountToken(subject);
+  return status.data.some(group => group.lastTransactions.some(entry => {
+    // This payload comes directly from the fixed Apple API origin over TLS.
+    // Client-supplied StoreKit JWS and client-supplied entitlement claims are never accepted.
+    if (entry.status !== 1 || entry.originalTransactionId !== transactionID) return false;
+    const parts = entry.signedTransactionInfo.split('.');
+    if (parts.length !== 3) return false;
+    const tx = parse(parts[1]);
+    return tx.bundleId === bundleID && tx.environment === env.APP_STORE_ENVIRONMENT &&
+      tx.originalTransactionId === transactionID && products.has(tx.productId) &&
+      tx.appAccountToken?.toLowerCase() === expected && tx.inAppOwnershipType === 'PURCHASED' &&
+      tx.revocationDate == null && tx.isUpgraded !== true &&
+      Number.isSafeInteger(tx.expiresDate) && tx.expiresDate > Date.now();
+  }));
+}
