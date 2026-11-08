@@ -6,6 +6,7 @@
   objects = {
 
 /* Begin PBXBuildFile section */
+    B10000000000000000000001 /* MembershipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* MembershipView.swift */; };
     52EB1EBDECFA0F252328F50A /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EB0F3EB7EE9FECCC403D934 /* AppStore.swift */; };
     16F7B2CC4ABB9BAD0B1834B9 /* Design.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBE28C419942BEA9F20CDA12 /* Design.swift */; };
     201E2358DE03663C66F578B0 /* DiaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C1B509304E162F6D0F8C05 /* DiaryView.swift */; };
@@ -25,6 +26,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+    B10000000000000000000002 /* MembershipView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MembershipView.swift; sourceTree = "<group>"; };
     4EB0F3EB7EE9FECCC403D934 /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
     CBE28C419942BEA9F20CDA12 /* Design.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Design.swift; sourceTree = "<group>"; };
     06C1B509304E162F6D0F8C05 /* DiaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryView.swift; sourceTree = "<group>"; };
@@ -62,6 +64,7 @@
       9E7F366D9F9B627600DB43EF /* OnboardingView.swift */,
       94FFB872214B537573AFA8B4 /* PlanView.swift */,
       1D3817DAE534E137776DB563 /* PrimalMacroApp.swift */,
+      B10000000000000000000002 /* MembershipView.swift */,
       5695CDD8C2B37EB4FE9C33DD /* ProgressView.swift */,
       633799881B3383D1411A5B79 /* ScanClient.swift */,
       DC5AC82D26E0CBF3762D8B40 /* ScannerSettingsView.swift */,
@@ -122,6 +125,7 @@
       3FE047222D21952AF82EE2BD /* OnboardingView.swift in Sources */,
       972297349DFDC216DB015E07 /* PlanView.swift in Sources */,
       2403AFBBB8AC258C683E03C0 /* PrimalMacroApp.swift in Sources */,
+      B10000000000000000000001 /* MembershipView.swift in Sources */,
       7C23BEE943A65DC3B4E1EF13 /* ProgressView.swift in Sources */,
       F47C31EB234E0080B7625F54 /* ScanClient.swift in Sources */,
       63BCE19E51A061BD0D85CA28 /* ScannerSettingsView.swift in Sources */,
@@ -156,6 +160,7 @@
       ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
       CODE_SIGN_STYLE = Automatic;
       CURRENT_PROJECT_VERSION = 1;
+      CODE_SIGN_ENTITLEMENTS = PRIMALMACRO/PRIMALMACRO.entitlements;
       DEVELOPMENT_TEAM = "";
       GENERATE_INFOPLIST_FILE = YES;
       INFOPLIST_KEY_CFBundleDisplayName = PRIMALMACRO;
@@ -180,6 +185,7 @@
       ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
       CODE_SIGN_STYLE = Automatic;
       CURRENT_PROJECT_VERSION = 1;
+      CODE_SIGN_ENTITLEMENTS = PRIMALMACRO/PRIMALMACRO.entitlements;
       DEVELOPMENT_TEAM = "";
       GENERATE_INFOPLIST_FILE = YES;
       INFOPLIST_KEY_CFBundleDisplayName = PRIMALMACRO;
