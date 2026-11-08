@@ -1,0 +1,21 @@
+PRIMALMACRO iOS v0.1 - START HERE
+================================
+
+This is a native SwiftUI project, completely separate from your metrology app.
+
+1. Unzip PRIMALMACRO_iOS_Xcode_v0.1.zip.
+2. Upload the whole PRIMALMACRO_iOS_v0_1 folder to your iOS/Xcode build website.
+3. Use PRIMALMACRO.xcodeproj and select the PRIMALMACRO scheme.
+4. Change placeholder Bundle ID uk.example.primalmacro to a NEW unique one.
+5. Pick your existing Apple Developer team and sign the NEW PRIMALMACRO app.
+6. Build for iOS 17+ and send the result to TestFlight.
+
+Read README.md for full configuration and instructions.
+
+Food diary, nutrition targets and weight tracking work without the AI server.
+For AI scanning, deploy the backend/ Cloudflare Worker and enter its HTTPS
+/scan URL and a separately generated access token in the iPhone app.
+The OpenAI API key goes in Cloudflare secrets, NOT in this iPhone project.
+
+Status: source prototype tested for syntax and basic logic, NOT yet compiled
+with Xcode, signed, or verified on a physical iPhone.
