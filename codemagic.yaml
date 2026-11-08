@@ -83,9 +83,25 @@ workflows:
           xcode-project use-profiles --custom-export-options='{"testFlightInternalTestingOnly": true}'
       - name: Create signed iPhone IPA
         script: |
-          xcode-project build-ipa --disable-xcpretty \
+          if xcode-project build-ipa --disable-xcpretty \
             --project "$CM_BUILD_DIR/PRIMALMACRO.xcodeproj" \
-            --scheme "PRIMALMACRO"
+            --scheme "PRIMALMACRO"; then
+            exit 0
+          else
+            archive_status=$?
+            echo "Xcode diagnostics from /tmp/xcodebuild_logs"
+            found_log=false
+            for log in /tmp/xcodebuild_logs/PRIMALMACRO*.log; do
+              [ -f "$log" ] || continue
+              found_log=true
+              echo "--- $log ---"
+              grep -niE '(^|[[:space:]])(fatal )?error:|provisioning profile.*(doesn.t|does not|missing|expired)|\*\* (ARCHIVE|EXPORT) FAILED \*\*' "$log" | head -n 30 || true
+            done
+            if [ "$found_log" = false ]; then
+              echo "No raw Xcode log was found."
+            fi
+            exit "$archive_status"
+          fi
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
