@@ -61,7 +61,7 @@ async function appleKey(kid) {
     try {
       response = await fetch(appleIssuer + '/auth/keys', {
         headers: { accept: 'application/json' },
-        redirect: 'error',
+        redirect: 'manual',
         signal: AbortSignal.timeout(10000)
       });
     } catch {
@@ -198,7 +198,7 @@ export async function checkEntitlement(env, subject, transactionID) {
   const host = sandbox ? 'api.storekit-sandbox.apple.com' : 'api.storekit.apple.com';
   const response = await fetch('https://' + host + '/inApps/v1/subscriptions/' + transactionID, {
     headers: { authorization: 'Bearer ' + await storeAPIJWT(env) },
-    redirect: 'error', signal: AbortSignal.timeout(8000)
+    redirect: 'manual', signal: AbortSignal.timeout(8000)
   });
   if (response.status === 404) return false;
   if (!response.ok) throw new Error('Apple subscription lookup unavailable');
