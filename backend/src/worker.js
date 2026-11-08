@@ -115,8 +115,20 @@ export default {
       if (!await state.reserve(subject)) return json({ error: 'Scan limit reached.' }, 429);
       return await analyze(input, env);
     } catch (error) {
-      if (error instanceof AccessError) return json({ error: error.message }, error.status);
-      return json({ error: 'Scanner is temporarily unavailable.' }, 503);
+      if (error instanceof AccessError) {
+        return json({ error: error.message }, error.status);
+      }
+      // Safe, non-secret diagnostic codes help distinguish Apple key lookup,
+      // quota storage and other service faults during TestFlight testing.
+      // Never log identity tokens, photos, credentials, request bodies or IPs.
+      const code = error?.message === 'Apple keys unavailable'
+        ? 'APPLE_KEYS_UNAVAILABLE'
+        : error?.message === 'Scan state unavailable'
+          ? 'QUOTA_STORAGE_UNAVAILABLE'
+          : pathname === '/session'
+            ? 'APPLE_SESSION_UNAVAILABLE'
+            : 'SCANNER_SERVICE_UNAVAILABLE';
+      return json({ error: 'Scanner is temporarily unavailable.', code }, 503);
     }
   }
 };
