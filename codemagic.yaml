@@ -42,9 +42,15 @@ workflows:
     instance_type: mac_mini_m2
     # This integration name must exactly match the API key name in
     # Codemagic account settings > Developer Portal integrations.
+    inputs:
+      buildNumber:
+        description: Unused PRIMALMACRO iOS build number from App Store Connect
+        type: number
     integrations:
       app_store_connect: "PRIMALMACRO Codemagic"
     environment:
+      vars:
+        PM_BUILD_NUMBER: "${{ inputs.buildNumber }}"
       ios_signing:
         distribution_type: app_store
         bundle_identifier: uk.themachine1979.primalmacro
@@ -56,7 +62,7 @@ workflows:
             echo "Missing native Xcode project in repository root."
             exit 1
           }
-      - name: Configure built-in AI scanner endpoint
+      - name: Set build number and optional AI scanner endpoint
         script: |
           python3 - <<'PY'
           import os
@@ -67,7 +73,7 @@ workflows:
           source = project.read_text()
           build = os.environ.get("PM_BUILD_NUMBER", "")
           if not re.fullmatch(r"[1-9][0-9]*", build):
-              raise SystemExit("Set PM_BUILD_NUMBER to an unused positive build number in App Store Connect")
+              raise SystemExit("Enter an unused positive whole number in the Codemagic build number field")
           source, count = re.subn(r"CURRENT_PROJECT_VERSION = [0-9]+;", f"CURRENT_PROJECT_VERSION = {build};", source)
           if count != 2:
               raise SystemExit("Expected build number in both Xcode configurations")

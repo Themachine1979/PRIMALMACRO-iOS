@@ -16,7 +16,7 @@
 ## Codemagic
 
 1. Run `primalmacro-ios-check` on the PR branch. It runs the Swift nutrition test, Node Worker tests and unsigned simulator build.
-2. Set `PM_BUILD_NUMBER` to an unused number higher than the latest PRIMALMACRO 0.2.0 build. Optionally set `PM_SCANNER_URL` to the approved sandbox HTTPS URL ending in `/scan`. An empty URL leaves scanning unavailable.
+2. When starting the signed workflow, enter a positive whole build number higher than the latest PRIMALMACRO 0.2.0 build in App Store Connect. Optionally set `PM_SCANNER_URL` to the approved sandbox HTTPS URL ending in `/scan`. An empty URL leaves scanning unavailable.
 3. Start `primalmacro-ios-testflight` manually with the updated PRIMALMACRO profile and `PRIMALMACRO Codemagic` integration. It exports an internal-testing-only IPA as an artifact. After approval, upload the IPA with Transporter and assign it to the intended internal TestFlight group. The workflow has no upload or publishing step.
 
 [Codemagic internal TestFlight setup](https://docs.codemagic.io/yaml-publishing/app-store-connect/)
