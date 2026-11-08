@@ -395,12 +395,22 @@ test('Auto mode validates production and TestFlight transactions without unsafe 
     if (url === uri('Production')) {
       if (scenario === 'sandbox') return Response.json({ errorCode: 4040010 }, { status: 404 });
       if (scenario === 'unknown404') return Response.json({ errorCode: 4040005 }, { status: 404 });
-      if (scenario === 'unauthorized') return new Response('NO_SECRET_LEAK', { status: 401 });
+      if (['unauthorized', 'unauthorizedBadSandbox', 'unauthorizedSandbox401'].includes(scenario)) {
+        return new Response('NO_SECRET_LEAK', { status: 401 });
+      }
       if (scenario === 'badEnv') return makeStatus('Sandbox');
       if (scenario === 'badAccount') return makeStatus('Production', { appAccountToken: await accountToken('someone-else') });
       return makeStatus('Production');
     }
-    if (url === uri('Sandbox')) return makeStatus('Sandbox');
+    if (url === uri('Sandbox')) {
+      if (scenario === 'unauthorizedBadSandbox') {
+        return makeStatus('Sandbox', { appAccountToken: await accountToken('another-apple-id') });
+      }
+      if (scenario === 'unauthorizedSandbox401') {
+        return new Response('PRIVATE_APPLE_BODY', { status: 401 });
+      }
+      return makeStatus('Sandbox');
+    }
     throw new Error('Unexpected Apple API host');
   });
 
@@ -412,11 +422,22 @@ test('Auto mode validates production and TestFlight transactions without unsafe 
   scenario = 'unknown404'; calls = [];
   assert.equal(await checkEntitlement(env, subject, originalID), false);
   assert.deepEqual(calls, [uri('Production')]);
+  // Before first public release, Apple may reject production access with 401,
+  // while a genuine sandbox transaction still verifies successfully.
   scenario = 'unauthorized'; calls = [];
-  await assert.rejects(checkEntitlement(env, subject, originalID), /unavailable/);
-  assert.deepEqual(calls, [uri('Production')]);
-  assert.deepEqual(warnings, ['PM_SCAN_STAGE: APP_STORE_HTTP_401']);
+  assert.equal(await checkEntitlement(env, subject, originalID), true);
+  assert.deepEqual(calls, [uri('Production'), uri('Sandbox')]);
+  assert.deepEqual(warnings, ['PM_SCAN_STAGE: PRODUCTION_401_SANDBOX_FALLBACK']);
   assert.equal(JSON.stringify(warnings).includes('NO_SECRET_LEAK'), false);
+  // A 401 fallback must never unlock scanning without a valid linked sandbox transaction.
+  scenario = 'unauthorizedBadSandbox'; calls = [];
+  assert.equal(await checkEntitlement(env, subject, originalID), false);
+  assert.deepEqual(calls, [uri('Production'), uri('Sandbox')]);
+  scenario = 'unauthorizedSandbox401'; calls = [];
+  await assert.rejects(checkEntitlement(env, subject, originalID), /unavailable/);
+  assert.deepEqual(calls, [uri('Production'), uri('Sandbox')]);
+  assert.equal(warnings.includes('PM_SCAN_STAGE: APP_STORE_HTTP_401'), true);
+  assert.equal(JSON.stringify(warnings).includes('PRIVATE_APPLE_BODY'), false);
   scenario = 'badEnv'; calls = [];
   assert.equal(await checkEntitlement(env, subject, originalID), false);
   assert.deepEqual(calls, [uri('Production')]);
@@ -429,6 +450,15 @@ test('Auto mode validates production and TestFlight transactions without unsafe 
   scenario = 'sandbox'; calls = [];
   assert.equal(await checkEntitlement(env, subject, originalID), true);
   assert.deepEqual(calls, [uri('Sandbox')]);
+  // An isolated sandbox authentication failure must not fall back to production.
+  scenario = 'unauthorizedSandbox401'; calls = [];
+  await assert.rejects(checkEntitlement(env, subject, originalID), /unavailable/);
+  assert.deepEqual(calls, [uri('Sandbox')]);
+  // Explicit Production mode must remain fail-closed for a 401.
+  env.APP_STORE_ENVIRONMENT = 'Production';
+  scenario = 'unauthorized'; calls = [];
+  await assert.rejects(checkEntitlement(env, subject, originalID), /unavailable/);
+  assert.deepEqual(calls, [uri('Production')]);
 });
 
 test('optional lifetime scan cap never disables daily limits or malformed-config protection', async t => {
