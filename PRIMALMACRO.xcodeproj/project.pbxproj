@@ -20,7 +20,6 @@
     2403AFBBB8AC258C683E03C0 /* PrimalMacroApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D3817DAE534E137776DB563 /* PrimalMacroApp.swift */; };
     7C23BEE943A65DC3B4E1EF13 /* ProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5695CDD8C2B37EB4FE9C33DD /* ProgressView.swift */; };
     F47C31EB234E0080B7625F54 /* ScanClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 633799881B3383D1411A5B79 /* ScanClient.swift */; };
-    63BCE19E51A061BD0D85CA28 /* ScannerSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC5AC82D26E0CBF3762D8B40 /* ScannerSettingsView.swift */; };
     317FCDF3137D59ADA95263B8 /* ScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A9CE8553A1ECDF772344D03 /* ScannerView.swift */; };
     3133AFCB065D8F0449FFB994 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5DB17CAB5299B3CE0FA8849A /* Assets.xcassets */; };
 /* End PBXBuildFile section */
@@ -40,7 +39,6 @@
     1D3817DAE534E137776DB563 /* PrimalMacroApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimalMacroApp.swift; sourceTree = "<group>"; };
     5695CDD8C2B37EB4FE9C33DD /* ProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressView.swift; sourceTree = "<group>"; };
     633799881B3383D1411A5B79 /* ScanClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanClient.swift; sourceTree = "<group>"; };
-    DC5AC82D26E0CBF3762D8B40 /* ScannerSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannerSettingsView.swift; sourceTree = "<group>"; };
     9A9CE8553A1ECDF772344D03 /* ScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannerView.swift; sourceTree = "<group>"; };
     5DB17CAB5299B3CE0FA8849A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Resources/Assets.xcassets"; sourceTree = "<group>"; };
     2F523E88044CECE9D38F25B9 /* PRIMALMACRO.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PRIMALMACRO.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -67,7 +65,6 @@
       B10000000000000000000002 /* MembershipView.swift */,
       5695CDD8C2B37EB4FE9C33DD /* ProgressView.swift */,
       633799881B3383D1411A5B79 /* ScanClient.swift */,
-      DC5AC82D26E0CBF3762D8B40 /* ScannerSettingsView.swift */,
       9A9CE8553A1ECDF772344D03 /* ScannerView.swift */,
       5DB17CAB5299B3CE0FA8849A /* Assets.xcassets */,
     ); path = PRIMALMACRO; sourceTree = "<group>"; };
@@ -128,7 +125,6 @@
       B10000000000000000000001 /* MembershipView.swift in Sources */,
       7C23BEE943A65DC3B4E1EF13 /* ProgressView.swift in Sources */,
       F47C31EB234E0080B7625F54 /* ScanClient.swift in Sources */,
-      63BCE19E51A061BD0D85CA28 /* ScannerSettingsView.swift in Sources */,
       317FCDF3137D59ADA95263B8 /* ScannerView.swift in Sources */,
     ); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
