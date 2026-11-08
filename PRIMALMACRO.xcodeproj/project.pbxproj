@@ -159,12 +159,13 @@
     C8A71A5CE922C2F309D53102 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {
       ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
       CODE_SIGN_STYLE = Automatic;
-      CURRENT_PROJECT_VERSION = 1;
+      CURRENT_PROJECT_VERSION = 2;
       CODE_SIGN_ENTITLEMENTS = PRIMALMACRO/PRIMALMACRO.entitlements;
       DEVELOPMENT_TEAM = "";
       GENERATE_INFOPLIST_FILE = YES;
       INFOPLIST_KEY_CFBundleDisplayName = PRIMALMACRO;
       INFOPLIST_KEY_NSCameraUsageDescription = "Capture food, menus, and labels to estimate nutrition.";
+      INFOPLIST_KEY_PMScannerEndpoint = PM_SCANNER_ENDPOINT_PLACEHOLDER;
       INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
       INFOPLIST_KEY_UILaunchScreen_Generation = YES;
       INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
@@ -184,12 +185,13 @@
     FC2DD77BC95226A3B6DC0CC3 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {
       ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
       CODE_SIGN_STYLE = Automatic;
-      CURRENT_PROJECT_VERSION = 1;
+      CURRENT_PROJECT_VERSION = 2;
       CODE_SIGN_ENTITLEMENTS = PRIMALMACRO/PRIMALMACRO.entitlements;
       DEVELOPMENT_TEAM = "";
       GENERATE_INFOPLIST_FILE = YES;
       INFOPLIST_KEY_CFBundleDisplayName = PRIMALMACRO;
       INFOPLIST_KEY_NSCameraUsageDescription = "Capture food, menus, and labels to estimate nutrition.";
+      INFOPLIST_KEY_PMScannerEndpoint = PM_SCANNER_ENDPOINT_PLACEHOLDER;
       INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
       INFOPLIST_KEY_UILaunchScreen_Generation = YES;
       INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
