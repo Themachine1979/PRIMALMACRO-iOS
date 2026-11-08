@@ -207,8 +207,8 @@ struct ScannerView: View {
     }
 
     private func scanCorner(rotation: Double) -> some View {
-        UnevenRoundedRectangle(topLeadingRadius: 5, topTrailingRadius: 0,
-                               bottomLeadingRadius: 0, bottomTrailingRadius: 0)
+        UnevenRoundedRectangle(topLeadingRadius: 5, bottomLeadingRadius: 0,
+                               bottomTrailingRadius: 0, topTrailingRadius: 0)
         .trim(from: 0, to: 0.48)
         .stroke(PM.orangeLight, style: StrokeStyle(lineWidth: 3, lineCap: .round))
         .frame(width: 30, height: 30)
