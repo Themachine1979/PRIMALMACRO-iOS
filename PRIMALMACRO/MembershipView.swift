@@ -113,7 +113,7 @@ final class MembershipPlans: ObservableObject {
                 selectedID = available.id
             }
             if products.isEmpty {
-                message = "Monthly and yearly plans haven't been configured in App Store Connect yet."
+                message = "Apple has not returned the subscription plans yet. Check App Store Connect product IDs, pricing, availability and subscription status, then tap Retry Prices."
             } else {
                 message = nil
             }
@@ -276,7 +276,7 @@ private struct MembershipLandingView: View {
                                 .foregroundStyle(PM.secondary)
                         }
                     } else {
-                        Text("Waiting for subscription prices from Apple. No purchase will be offered until prices are available.")
+                        Text("Choose monthly or yearly below. Prices will appear once Apple makes the subscriptions available. You cannot start a trial until Apple returns a valid price.")
                             .font(.caption).foregroundStyle(PM.secondary)
                     }
                 }
@@ -368,7 +368,7 @@ private struct MembershipLandingView: View {
                         }
                     }
                 } else {
-                    Text("Unavailable").font(.caption).foregroundStyle(PM.secondary)
+                    Text("Price pending").font(.caption).foregroundStyle(PM.secondary)
                 }
             }
             .padding(15)
@@ -379,7 +379,7 @@ private struct MembershipLandingView: View {
                         .stroke(selected ? PM.orange : PM.elevated, lineWidth: 2))
         }
         .buttonStyle(.plain)
-        .disabled(plans.product(id) == nil || plans.purchasing)
+        .disabled(plans.purchasing)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
