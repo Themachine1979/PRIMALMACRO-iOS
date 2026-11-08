@@ -74,6 +74,7 @@ enum ScanError: LocalizedError {
 
 enum ScanClient {
     private struct Challenge: Decodable { let nonce: String }
+    private struct Failure: Decodable { let code: String? }
 
     static func challenge() async throws -> String {
         let response: Challenge = try await post("challenge", body: nil)
@@ -126,7 +127,6 @@ enum ScanClient {
         case 403: throw ScanError.subscriptionRequired
         case 429: throw ScanError.rateLimited
         case 503:
-            struct Failure: Decodable { let code: String? }
             let code = (try? JSONDecoder().decode(Failure.self, from: data))?.code
             let allowed: Set<String> = [
                 "APPLE_KEYS_UNAVAILABLE", "QUOTA_STORAGE_UNAVAILABLE",
