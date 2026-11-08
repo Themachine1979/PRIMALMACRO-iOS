@@ -201,6 +201,21 @@ test('Apple signature, nonce, replay, live entitlement and quotas gate the only 
   assert.equal((await worker.fetch(request('session', {
     nonce, identityToken: identityToken.replace(/\.[^.]+$/, '.AAAA')
   }), env)).status, 401);
+  // An unavailable Durable Object must fail closed and report only a fixed,
+  // non-sensitive stage label. The nonce must remain reusable after recovery.
+  const savedState = env.SCAN_STATE;
+  const warnings = [];
+  const warn = t.mock.method(console, 'warn', message => warnings.push(message));
+  env.SCAN_STATE = { ...savedState, get: () => ({
+    fetch: async () => { throw new Error('fake internal storage failure'); }
+  }) };
+  const unavailable = await worker.fetch(request('session', { nonce, identityToken }), env);
+  assert.equal(unavailable.status, 503);
+  assert.equal((await unavailable.json()).code, 'QUOTA_STORAGE_UNAVAILABLE');
+  assert.deepEqual(warnings, ['PM_SESSION_STAGE: NONCE_STORAGE']);
+  assert.equal(JSON.stringify(warnings).includes(identityToken), false);
+  env.SCAN_STATE = savedState;
+  warn.mock.restore();
   const login = await worker.fetch(request('session', { nonce, identityToken }), env);
   assert.equal(login.status, 200);
   const { token, expiresAt } = await login.json();
