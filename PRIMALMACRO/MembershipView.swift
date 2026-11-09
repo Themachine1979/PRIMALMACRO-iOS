@@ -233,6 +233,7 @@ private struct MembershipLandingView: View {
     @EnvironmentObject private var member: AppleMemberSession
     @EnvironmentObject private var plans: MembershipPlans
     @State private var scannerChallenge: String?
+    @State private var showingOfferCodeSheet = false
 
     var body: some View {
         ScrollView {
@@ -313,6 +314,23 @@ private struct MembershipLandingView: View {
                     }
                 }
 
+                Button {
+                    showingOfferCodeSheet = true
+                } label: {
+                    Label("Redeem Offer Code", systemImage: "ticket.fill")
+                        .font(.subheadline.weight(.bold))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .tint(PM.orange)
+                .buttonStyle(.bordered)
+                .accessibilityHint("Opens Apple's secure subscription offer code redemption sheet")
+                if !member.signedIn {
+                    Text("After redeeming, sign in to link your subscription and enable AI scanning.")
+                        .font(.caption)
+                        .foregroundStyle(PM.secondary)
+                        .multilineTextAlignment(.center)
+                }
+
                 if let error = member.errorMessage {
                     Text(error).font(.caption).foregroundStyle(.red)
                 }
@@ -352,6 +370,23 @@ private struct MembershipLandingView: View {
             .frame(maxWidth: .infinity)
         }
         .background(PM.background)
+        .offerCodeRedemption(isPresented: $showingOfferCodeSheet) { result in
+            Task { @MainActor in
+                switch result {
+                case .success(let verification):
+                    if case .verified(let transaction) = verification {
+                        await transaction.finish()
+                        await plans.refreshEntitlement()
+                        plans.message = "Offer redeemed. Sign in to activate AI scanning."
+                    } else {
+                        plans.message = "Apple could not verify the redeemed offer."
+                    }
+                case .failure:
+                    // Apple's own sheet explains invalid or ineligible offer codes.
+                    plans.message = "Offer redemption was not completed."
+                }
+            }
+        }
         .task {
             guard ScannerService.endpoint != nil else { return }
             // Failure here never prevents Apple account sign-in or purchasing.
