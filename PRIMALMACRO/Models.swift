@@ -40,13 +40,19 @@ enum FitnessGoal: String, CaseIterable, Codable, Identifiable {
 }
 
 struct FitnessProfile: Codable {
-    var formulaSex: FormulaSex
+    // Users 13–17 only need their age to use the food diary.
+    // Optional body measurements preserve privacy and prevent placeholder
+    // measurements from accidentally driving adult calorie calculations.
+    var formulaSex: FormulaSex?
     var age: Int
-    var heightCm: Double
-    var weightKg: Double
+    var heightCm: Double?
+    var weightKg: Double?
     var activity: ActivityLevel
     var goal: FitnessGoal
     var targetWeightKg: Double?
+
+    var isTeen: Bool { (13..<18).contains(age) }
+    var isAdult: Bool { age >= 18 }
 }
 
 struct NutritionTarget {
