@@ -17,7 +17,7 @@ final class AppStore: ObservableObject {
     }
 
     var profile: FitnessProfile? { data.profile }
-    var targets: NutritionTarget? { data.profile.map(NutritionMath.target(for:)) }
+    var targets: NutritionTarget? { data.profile.flatMap(NutritionMath.target(for:)) }
     var foods: [FoodEntry] { data.foods }
     var weights: [WeightEntry] { data.weights.sorted { $0.date < $1.date } }
 
@@ -36,8 +36,8 @@ final class AppStore: ObservableObject {
 
     func saveProfile(_ profile: FitnessProfile) {
         data.profile = profile
-        if data.weights.isEmpty {
-            data.weights = [WeightEntry(kg: profile.weightKg)]
+        if profile.isAdult, let kg = profile.weightKg, data.weights.isEmpty {
+            data.weights = [WeightEntry(kg: kg)]
         }
         persist()
     }
@@ -53,8 +53,9 @@ final class AppStore: ObservableObject {
     }
 
     func addWeight(_ kg: Double) {
+        guard data.profile?.isAdult == true else { return }
         data.weights.append(WeightEntry(kg: kg))
-        if data.profile != nil { data.profile?.weightKg = kg }
+        data.profile?.weightKg = kg
         persist()
     }
 
