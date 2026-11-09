@@ -270,10 +270,20 @@ struct ScannerView: View {
         if let current = session, current.expiresAt > Date().timeIntervalSince1970 {
             await analyze()
         } else {
-            // Expired or missing scanner sessions never bypass Apple verification.
+            // Expired sessions require fresh identity verification.
             ScannerSession.clear()
             session = nil
-            await prepareSignIn()
+            if member.isEmailAccount {
+                do {
+                    try await member.refreshEmailScannerSession()
+                    session = ScannerSession.load()
+                    if session != nil { await analyze() }
+                } catch {
+                    errorMessage = "Email session needs renewing: \(error.localizedDescription)"
+                }
+            } else {
+                await prepareSignIn()
+            }
         }
     }
 
