@@ -1,18 +1,54 @@
 import Foundation
 import Combine
+import CryptoKit
 
 @MainActor
 final class AppStore: ObservableObject {
     @Published private(set) var data: AppData
     @Published var persistenceError: String?
 
+    private var currentAccountSubject: String?
+    private var accountDataReadable = false
+
     init() {
+        // Never show another member's on-device diary before authentication.
+        data = AppData()
+    }
+
+    func activateAccount(_ subject: String?) {
+        guard subject != currentAccountSubject else { return }
+        currentAccountSubject = subject
+        accountDataReadable = false
+        guard let subject else {
+            data = AppData()
+            return
+        }
         do {
-            let url = try Self.storageURL()
-            let existing = try Data(contentsOf: url)
-            data = try JSONDecoder().decode(AppData.self, from: existing)
+            let destination = try Self.storageURL(for: subject)
+            if FileManager.default.fileExists(atPath: destination.path) {
+                data = try JSONDecoder().decode(AppData.self, from: Data(contentsOf: destination))
+            } else if subject == UserDefaults.standard.string(forKey: "primalmacro.apple.user.id") {
+                // One-time migration of pre-email-release data for existing Apple
+                // members only. Never migrate someone's diary into an email account.
+                let oldURL = try Self.legacyStorageURL()
+                if FileManager.default.fileExists(atPath: oldURL.path) {
+                    let existing = try Data(contentsOf: oldURL)
+                    let migrated = try JSONDecoder().decode(AppData.self, from: existing)
+                    try existing.write(to: destination, options: [.atomic, .completeFileProtectionUnlessOpen])
+                    try FileManager.default.removeItem(at: oldURL)
+                    data = migrated
+                } else {
+                    data = AppData()
+                }
+            } else {
+                data = AppData()
+            }
+            accountDataReadable = true
+            persistenceError = nil
         } catch {
             data = AppData()
+            accountDataReadable = false
+            persistenceError = "Couldn't load your diary securely. No data has been overwritten."
         }
     }
 
@@ -63,9 +99,24 @@ final class AppStore: ObservableObject {
         persist()
     }
 
+    func deleteStoredAccountData(for subject: String?) {
+        guard let subject else { return }
+        do {
+            let url = try Self.storageURL(for: subject)
+            if FileManager.default.fileExists(atPath: url.path) {
+                try FileManager.default.removeItem(at: url)
+            }
+            if currentAccountSubject == subject { data = AppData() }
+            persistenceError = nil
+        } catch {
+            persistenceError = "Account deleted, but local records couldn't be erased: \(error.localizedDescription)"
+        }
+    }
+
     private func persist() {
         do {
-            let url = try Self.storageURL()
+            guard let subject = currentAccountSubject, accountDataReadable else { return }
+            let url = try Self.storageURL(for: subject)
             let encoded = try JSONEncoder().encode(data)
             try encoded.write(to: url, options: [.atomic, .completeFileProtectionUnlessOpen])
             persistenceError = nil
@@ -74,9 +125,19 @@ final class AppStore: ObservableObject {
         }
     }
 
-    private static func storageURL() throws -> URL {
+    private static func storageFolder() throws -> URL {
         let folder = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        return folder.appendingPathComponent("primalmacro-data.json")
+        return folder
+    }
+
+    private static func legacyStorageURL() throws -> URL {
+        try storageFolder().appendingPathComponent("primalmacro-data.json")
+    }
+
+    private static func storageURL(for subject: String) throws -> URL {
+        let digest = SHA256.hash(data: Data(subject.utf8))
+            .map { String(format: "%02x", $0) }.joined()
+        return try storageFolder().appendingPathComponent("diary-" + digest + ".json")
     }
 }

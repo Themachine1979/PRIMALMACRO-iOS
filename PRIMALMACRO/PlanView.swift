@@ -7,6 +7,9 @@ struct PlanView: View {
     @AppStorage("primalmacro.ai.photoConsent") private var photoConsent = false
     @State private var showEdit = false
     @State private var showDeleteAlert = false
+    @State private var showDeleteAccountAlert = false
+    @State private var deletingAccount = false
+    @State private var deleteAccountError: String?
 
     var body: some View {
         ScrollView {
@@ -50,7 +53,15 @@ struct PlanView: View {
                             UIApplication.shared.open(url)
                         }
                     }
-                    settingsButton("Sign out of Apple account", icon: "rectangle.portrait.and.arrow.right") { member.signOut() }
+                    settingsButton("Sign out", icon: "rectangle.portrait.and.arrow.right") { member.signOut() }
+                    if member.isEmailAccount {
+                        settingsButton("Delete my email account", icon: "person.crop.circle.badge.xmark") {
+                            showDeleteAccountAlert = true
+                        }
+                    }
+                    if let deleteAccountError {
+                        Text(deleteAccountError).font(.footnote).foregroundStyle(.red)
+                    }
                     if photoConsent {
                         settingsButton("Reset AI photo permission", icon: "hand.raised") { photoConsent = false }
                     }
@@ -74,6 +85,26 @@ struct PlanView: View {
         }
         .background(PM.background)
         .sheet(isPresented: $showEdit) { EditProfileView() }
+        .confirmationDialog("Delete your PRIMALMACRO email account and this phone's diary? This can't be undone.",
+                            isPresented: $showDeleteAccountAlert, titleVisibility: .visible) {
+            Button("Delete account and local data", role: .destructive) {
+                guard !deletingAccount else { return }
+                deletingAccount = true
+                Task {
+                    do {
+                        let subject = member.accountSubject
+                        try await member.deleteEmailAccount()
+                        store.deleteStoredAccountData(for: subject)
+                        photoConsent = false
+                        deleteAccountError = nil
+                    } catch {
+                        deleteAccountError = "Couldn't delete account: \(error.localizedDescription). Try signing in again."
+                    }
+                    deletingAccount = false
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
         .confirmationDialog("Delete your diary, profile and weight records from this phone?",
                             isPresented: $showDeleteAlert, titleVisibility: .visible) {
             Button("Delete all local data", role: .destructive) {

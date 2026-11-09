@@ -84,6 +84,14 @@ workflows:
           placeholder = "PM_SCANNER_ENDPOINT_PLACEHOLDER"
           if source.count(placeholder) != 2:
               raise SystemExit("Expected scanner placeholder in both Xcode configurations")
+          # Firebase Web API keys are client-visible identifiers, not passwords.
+          # A missing key keeps email registration safely disabled in the app.
+          firebase_key = os.environ.get("PM_FIREBASE_API_KEY", "").strip()
+          if firebase_key and not re.fullmatch(r"[A-Za-z0-9_-]{30,80}", firebase_key):
+              raise SystemExit("PM_FIREBASE_API_KEY must be a valid Firebase Web API key")
+          if source.count("PM_FIREBASE_API_KEY_PLACEHOLDER") != 2:
+              raise SystemExit("Expected Firebase placeholder in both Xcode configurations")
+          source = source.replace("PM_FIREBASE_API_KEY_PLACEHOLDER", firebase_key or "PM_FIREBASE_API_KEY_PLACEHOLDER")
           project.write_text(source.replace(placeholder, url))
           PY
       - name: Apply Apple distribution provisioning profile
@@ -174,6 +182,14 @@ workflows:
           placeholder = "PM_SCANNER_ENDPOINT_PLACEHOLDER"
           if source.count(placeholder) != 2:
               raise SystemExit("Expected scanner placeholder in both Xcode configurations")
+          # Firebase Web API keys are client-visible identifiers, not passwords.
+          # A missing key keeps email registration safely disabled in the app.
+          firebase_key = os.environ.get("PM_FIREBASE_API_KEY", "").strip()
+          if firebase_key and not re.fullmatch(r"[A-Za-z0-9_-]{30,80}", firebase_key):
+              raise SystemExit("PM_FIREBASE_API_KEY must be a valid Firebase Web API key")
+          if source.count("PM_FIREBASE_API_KEY_PLACEHOLDER") != 2:
+              raise SystemExit("Expected Firebase placeholder in both Xcode configurations")
+          source = source.replace("PM_FIREBASE_API_KEY_PLACEHOLDER", firebase_key or "PM_FIREBASE_API_KEY_PLACEHOLDER")
           project.write_text(source.replace(placeholder, url))
           PY
       - name: Apply Apple distribution provisioning profile
@@ -279,6 +295,14 @@ workflows:
           placeholder = "PM_SCANNER_ENDPOINT_PLACEHOLDER"
           if source.count(placeholder) != 2:
               raise SystemExit("Expected scanner placeholder in both Xcode configurations")
+          # Firebase Web API keys are client-visible identifiers, not passwords.
+          # A missing key keeps email registration safely disabled in the app.
+          firebase_key = os.environ.get("PM_FIREBASE_API_KEY", "").strip()
+          if firebase_key and not re.fullmatch(r"[A-Za-z0-9_-]{30,80}", firebase_key):
+              raise SystemExit("PM_FIREBASE_API_KEY must be a valid Firebase Web API key")
+          if source.count("PM_FIREBASE_API_KEY_PLACEHOLDER") != 2:
+              raise SystemExit("Expected Firebase placeholder in both Xcode configurations")
+          source = source.replace("PM_FIREBASE_API_KEY_PLACEHOLDER", firebase_key or "PM_FIREBASE_API_KEY_PLACEHOLDER")
           project.write_text(source.replace(placeholder, url))
           PY
       - name: Apply Apple distribution provisioning profile

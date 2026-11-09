@@ -64,8 +64,8 @@ enum ScanError: LocalizedError {
         case .backendUnavailable(let code): "AI connection is unavailable (reference: \(code)). Please try again later."
         case .imagePreparation: "Could not prepare the photo. Try a different image."
         case .rateLimited: "The scan limit has been reached. Please try again later."
-        case .signInRequired: "Confirm your Apple sign-in to continue scanning."
-        case .subscriptionRequired: "AI scanning needs an active PRIMALMACRO subscription linked to this Apple sign-in."
+        case .signInRequired: "Please sign in again to continue scanning."
+        case .subscriptionRequired: "AI scanning needs an active PRIMALMACRO subscription linked to your account."
         case .sessionStorage: "Could not save your scanner sign-in. Please try again."
         case .invalidResponse: "Could not read the nutrition analysis. Please try again."
         }
@@ -83,6 +83,10 @@ enum ScanClient {
 
     static func session(identityToken: String, nonce: String) async throws -> ScannerSession {
         try await post("session", body: JSONEncoder().encode(["identityToken": identityToken, "nonce": nonce]))
+    }
+
+    static func emailSession(identityToken: String) async throws -> ScannerSession {
+        try await post("email/session", body: JSONEncoder().encode(["idToken": identityToken]))
     }
 
     @MainActor
