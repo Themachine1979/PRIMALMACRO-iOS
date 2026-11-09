@@ -4,7 +4,7 @@ import StoreKit
 import Combine
 import CryptoKit
 
-// PRIMALMACRO v0.2: Apple-only sign-in. Google can be added later.
+// PRIMALMACRO: Sign in with Apple or verified email/password accounts.
 @MainActor
 final class AppleMemberSession: ObservableObject {
     @Published private(set) var signedIn = false
@@ -323,7 +323,7 @@ private struct MembershipLandingView: View {
                 PMPanel {
                     VStack(alignment: .leading, spacing: 11) {
                         Label("AI photo scanning: meals, menus and packaging", systemImage: "camera.viewfinder")
-                        Label("Personal daily calorie and protein targets", systemImage: "target")
+                        Label("Calorie and macro targets for adults; diary-only mode for ages 13–17", systemImage: "target")
                         Label("Nutrition diary and body-weight progress", systemImage: "chart.xyaxis.line")
                     }
                     .font(.subheadline.weight(.semibold))
@@ -441,7 +441,7 @@ private struct MembershipLandingView: View {
                     .multilineTextAlignment(.center)
                 Link("Terms of Use", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
                     .font(.caption)
-                Text("For adults 18+. Nutrition scans are estimates, not medical advice.")
+                Text("Ages 13–17: food diary without calorie or weight-loss targets. Adults can use estimated goal-based targets. AI estimates aren't medical advice.")
                     .font(.caption2)
                     .foregroundStyle(PM.secondary)
                     .multilineTextAlignment(.center)
