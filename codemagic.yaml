@@ -37,7 +37,7 @@ workflows:
       - /tmp/xcodebuild_logs/*.log
 
   primalmacro-ios-testflight:
-    name: PRIMALMACRO - signed TestFlight archive
+    name: PRIMALMACRO v1.1 - signed TestFlight archive
     max_build_duration: 90
     instance_type: mac_mini_m2
     # This integration name must exactly match the API key name in
@@ -76,6 +76,9 @@ workflows:
           build = os.environ.get("PM_BUILD_NUMBER", "")
           if not re.fullmatch(r"[1-9][0-9]*", build):
               raise SystemExit("Enter an unused positive whole number in the Codemagic build number field")
+          source, versions = re.subn(r"MARKETING_VERSION = [0-9.]+;", "MARKETING_VERSION = 1.1;", source)
+          if versions != 2:
+              raise SystemExit("Expected marketing version 1.1 in both Xcode configurations")
           source, count = re.subn(r"CURRENT_PROJECT_VERSION = [0-9]+;", f"CURRENT_PROJECT_VERSION = {build};", source)
           if count != 2:
               raise SystemExit("Expected build number in both Xcode configurations")
@@ -124,7 +127,7 @@ workflows:
 
   # MANUAL OPT-IN: do not run without explicit owner approval.
   primalmacro-ios-upload-internal:
-    name: PRIMALMACRO - upload to App Store Connect (manual)
+    name: PRIMALMACRO v1.1 - upload internal TestFlight (manual)
     max_build_duration: 90
     instance_type: mac_mini_m2
     # This integration name must exactly match the API key name in
@@ -174,6 +177,9 @@ workflows:
           build = os.environ.get("PM_BUILD_NUMBER", "")
           if not re.fullmatch(r"[1-9][0-9]*", build):
               raise SystemExit("Enter an unused positive whole number in the Codemagic build number field")
+          source, versions = re.subn(r"MARKETING_VERSION = [0-9.]+;", "MARKETING_VERSION = 1.1;", source)
+          if versions != 2:
+              raise SystemExit("Expected marketing version 1.1 in both Xcode configurations")
           source, count = re.subn(r"CURRENT_PROJECT_VERSION = [0-9]+;", f"CURRENT_PROJECT_VERSION = {build};", source)
           if count != 2:
               raise SystemExit("Expected build number in both Xcode configurations")
