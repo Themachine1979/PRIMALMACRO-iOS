@@ -92,8 +92,9 @@ struct PlanView: View {
                 deletingAccount = true
                 Task {
                     do {
+                        let subject = member.accountSubject
                         try await member.deleteEmailAccount()
-                        store.clearAllData()
+                        store.deleteStoredAccountData(for: subject)
                         photoConsent = false
                         deleteAccountError = nil
                     } catch {
