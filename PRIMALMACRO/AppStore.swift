@@ -8,6 +8,7 @@ final class AppStore: ObservableObject {
     @Published var persistenceError: String?
 
     private var currentAccountSubject: String?
+    private var accountDataReadable = false
 
     init() {
         // Never show another member's on-device diary before authentication.
@@ -17,6 +18,7 @@ final class AppStore: ObservableObject {
     func activateAccount(_ subject: String?) {
         guard subject != currentAccountSubject else { return }
         currentAccountSubject = subject
+        accountDataReadable = false
         guard let subject else {
             data = AppData()
             return
@@ -41,9 +43,11 @@ final class AppStore: ObservableObject {
             } else {
                 data = AppData()
             }
+            accountDataReadable = true
             persistenceError = nil
         } catch {
             data = AppData()
+            accountDataReadable = false
             persistenceError = "Couldn't load your diary securely. No data has been overwritten."
         }
     }
@@ -111,7 +115,7 @@ final class AppStore: ObservableObject {
 
     private func persist() {
         do {
-            guard let subject = currentAccountSubject else { return }
+            guard let subject = currentAccountSubject, accountDataReadable else { return }
             let url = try Self.storageURL(for: subject)
             let encoded = try JSONEncoder().encode(data)
             try encoded.write(to: url, options: [.atomic, .completeFileProtectionUnlessOpen])
