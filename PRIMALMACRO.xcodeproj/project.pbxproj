@@ -176,6 +176,7 @@
       INFOPLIST_KEY_NSCameraUsageDescription = "Capture food, menus, and labels to estimate nutrition.";
       INFOPLIST_FILE = PRIMALMACRO/Info.plist;
       PM_SCANNER_ENDPOINT = "PM_SCANNER_ENDPOINT_PLACEHOLDER";
+      PM_FIREBASE_API_KEY = "PM_FIREBASE_API_KEY_PLACEHOLDER";
       INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
       INFOPLIST_KEY_UILaunchScreen_Generation = YES;
       INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
@@ -203,6 +204,7 @@
       INFOPLIST_KEY_NSCameraUsageDescription = "Capture food, menus, and labels to estimate nutrition.";
       INFOPLIST_FILE = PRIMALMACRO/Info.plist;
       PM_SCANNER_ENDPOINT = "PM_SCANNER_ENDPOINT_PLACEHOLDER";
+      PM_FIREBASE_API_KEY = "PM_FIREBASE_API_KEY_PLACEHOLDER";
       INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
       INFOPLIST_KEY_UILaunchScreen_Generation = YES;
       INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
