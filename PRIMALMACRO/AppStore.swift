@@ -95,6 +95,20 @@ final class AppStore: ObservableObject {
         persist()
     }
 
+    func deleteStoredAccountData(for subject: String?) {
+        guard let subject else { return }
+        do {
+            let url = try Self.storageURL(for: subject)
+            if FileManager.default.fileExists(atPath: url.path) {
+                try FileManager.default.removeItem(at: url)
+            }
+            if currentAccountSubject == subject { data = AppData() }
+            persistenceError = nil
+        } catch {
+            persistenceError = "Account deleted, but local records couldn't be erased: \(error.localizedDescription)"
+        }
+    }
+
     private func persist() {
         do {
             guard let subject = currentAccountSubject else { return }
