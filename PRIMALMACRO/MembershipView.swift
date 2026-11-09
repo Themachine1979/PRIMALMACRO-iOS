@@ -299,6 +299,7 @@ private struct MembershipLandingView: View {
     @EnvironmentObject private var plans: MembershipPlans
     @State private var scannerChallenge: String?
     @State private var showingOfferCodeSheet = false
+    @State private var showingEmailAccountSheet = false
 
     var body: some View {
         ScrollView {
@@ -366,6 +367,21 @@ private struct MembershipLandingView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                     Text("Sign in securely with Apple to continue")
                         .font(.caption).foregroundStyle(PM.secondary)
+                    Button {
+                        showingEmailAccountSheet = true
+                    } label: {
+                        Label("CREATE ACCOUNT / SIGN IN WITH EMAIL", systemImage: "envelope.fill")
+                            .font(.subheadline.weight(.bold))
+                            .frame(maxWidth: .infinity, minHeight: 48)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(PM.orange)
+                    .disabled(!FirebaseEmailAuth.isConfigured)
+                    if !FirebaseEmailAuth.isConfigured {
+                        Text("Email sign-in will be enabled after the authentication service is configured.")
+                            .font(.caption)
+                            .foregroundStyle(PM.secondary)
+                    }
                 } else {
                     PMLargeButton(
                         title: plans.product(plans.selectedID).map {
@@ -435,6 +451,9 @@ private struct MembershipLandingView: View {
             .frame(maxWidth: .infinity)
         }
         .background(PM.background)
+        .sheet(isPresented: $showingEmailAccountSheet) {
+            EmailAccountView().environmentObject(member)
+        }
         .offerCodeRedemption(options: [], isPresented: $showingOfferCodeSheet) { result in
             Task { @MainActor in
                 switch result {
