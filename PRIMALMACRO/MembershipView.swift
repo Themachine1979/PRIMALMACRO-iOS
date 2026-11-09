@@ -455,21 +455,14 @@ private struct MembershipLandingView: View {
         .sheet(isPresented: $showingEmailAccountSheet) {
             EmailAccountView().environmentObject(member)
         }
-        .offerCodeRedemption(options: [], isPresented: $showingOfferCodeSheet) { result in
-            Task { @MainActor in
-                switch result {
-                case .success(let verification):
-                    if case .verified(let transaction) = verification {
-                        await transaction.finish()
-                        await plans.refreshEntitlement()
-                        plans.message = "Offer redeemed. Sign in to activate AI scanning."
-                    } else {
-                        plans.message = "Apple could not verify the redeemed offer."
-                    }
-                case .failure:
-                    // Apple's own sheet explains invalid or ineligible offer codes.
-                    plans.message = "Offer redemption was not completed."
-                }
+        // The iOS 17-compatible sheet reports presentation, while StoreKit's
+        // Transaction.updates stream notifies us of redeemed purchases.
+        .offerCodeRedemption(isPresented: $showingOfferCodeSheet) { result in
+            switch result {
+            case .success:
+                Task { @MainActor in await plans.refreshEntitlement() }
+            case .failure:
+                plans.message = "Could not open Apple's offer redemption screen."
             }
         }
         .task {
