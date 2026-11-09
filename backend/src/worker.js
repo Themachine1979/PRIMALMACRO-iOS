@@ -1,4 +1,4 @@
-import { AccessError, authenticate, challenge, checkEntitlement, session } from './access.js';
+import { AccessError, authenticate, challenge, checkEntitlement, emailSession, session } from './access.js';
 import { scanState } from './state.js';
 export { ScanState } from './state.js';
 
@@ -99,7 +99,7 @@ export default {
     if (request.method === 'GET' && pathname === '/health') {
       return json({ ok: true, app: 'PRIMALMACRO-scanner' });
     }
-    if (request.method !== 'POST' || !['/challenge', '/session', '/scan'].includes(pathname)) {
+    if (request.method !== 'POST' || !['/challenge', '/session', '/email/session', '/scan'].includes(pathname)) {
       return json({ error: 'Not found' }, 404);
     }
     const startupCode = startupFailureCode(env);
@@ -125,6 +125,7 @@ export default {
         throw new Error('Scan state unavailable');
       }
       if (pathname === '/session') return json(await session(env, await readJSON(request, 8192), state));
+      if (pathname === '/email/session') return json(await emailSession(env, await readJSON(request, 8192)));
 
       const subject = await authenticate(env, request);
       if (!(await env.SCAN_RATE_LIMIT.limit({ key: 'member:' + subject })).success) {
