@@ -8,6 +8,7 @@
 /* Begin PBXBuildFile section */
     B10000000000000000000003 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000004 /* PrivacyInfo.xcprivacy */; };
     B10000000000000000000001 /* MembershipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* MembershipView.swift */; };
+    A2B2C2D2E2F2000000000001 /* FirebaseEmailAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B2C2D2E2F2000000000002 /* FirebaseEmailAuth.swift */; };
     52EB1EBDECFA0F252328F50A /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EB0F3EB7EE9FECCC403D934 /* AppStore.swift */; };
     16F7B2CC4ABB9BAD0B1834B9 /* Design.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBE28C419942BEA9F20CDA12 /* Design.swift */; };
     201E2358DE03663C66F578B0 /* DiaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C1B509304E162F6D0F8C05 /* DiaryView.swift */; };
@@ -29,6 +30,7 @@
     B10000000000000000000004 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
     B10000000000000000000005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
     B10000000000000000000002 /* MembershipView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MembershipView.swift; sourceTree = "<group>"; };
+    A2B2C2D2E2F2000000000002 /* FirebaseEmailAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseEmailAuth.swift; sourceTree = "<group>"; };
     4EB0F3EB7EE9FECCC403D934 /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
     CBE28C419942BEA9F20CDA12 /* Design.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Design.swift; sourceTree = "<group>"; };
     06C1B509304E162F6D0F8C05 /* DiaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryView.swift; sourceTree = "<group>"; };
@@ -66,6 +68,7 @@
       94FFB872214B537573AFA8B4 /* PlanView.swift */,
       1D3817DAE534E137776DB563 /* PrimalMacroApp.swift */,
       B10000000000000000000002 /* MembershipView.swift */,
+      A2B2C2D2E2F2000000000002 /* FirebaseEmailAuth.swift */,
       5695CDD8C2B37EB4FE9C33DD /* ProgressView.swift */,
       633799881B3383D1411A5B79 /* ScanClient.swift */,
       9A9CE8553A1ECDF772344D03 /* ScannerView.swift */,
@@ -128,6 +131,7 @@
       972297349DFDC216DB015E07 /* PlanView.swift in Sources */,
       2403AFBBB8AC258C683E03C0 /* PrimalMacroApp.swift in Sources */,
       B10000000000000000000001 /* MembershipView.swift in Sources */,
+      A2B2C2D2E2F2000000000001 /* FirebaseEmailAuth.swift in Sources */,
       7C23BEE943A65DC3B4E1EF13 /* ProgressView.swift in Sources */,
       F47C31EB234E0080B7625F54 /* ScanClient.swift in Sources */,
       317FCDF3137D59ADA95263B8 /* ScannerView.swift in Sources */,
