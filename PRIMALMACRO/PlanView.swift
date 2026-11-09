@@ -46,8 +46,20 @@ struct PlanView: View {
                         }
                     }
                 }
+                if store.profile?.isTeen == true {
+                    PMPanel {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label("FOOD DIARY MODE", systemImage: "book.closed")
+                                .font(.caption.weight(.heavy)).foregroundStyle(PM.orange)
+                            Text("Log your meals and nutrition information without a weight-loss plan.")
+                                .font(.subheadline).foregroundStyle(PM.secondary)
+                            Text("For ages 13–17, PRIMALMACRO does not set calorie budgets, body-weight targets or macro targets.")
+                                .font(.caption).foregroundStyle(PM.secondary)
+                        }
+                    }
+                }
                 VStack(spacing: 10) {
-                    settingsButton("Edit profile & goal", icon: "person.crop.circle") { showEdit = true }
+                    settingsButton(store.profile?.isTeen == true ? "Edit age" : "Edit profile & goal", icon: "person.crop.circle") { showEdit = true }
                     settingsButton("Manage subscription", icon: "creditcard.fill") {
                         if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
                             UIApplication.shared.open(url)
@@ -72,11 +84,11 @@ struct PlanView: View {
                         Text("PRIVATE BY DESIGN").font(.caption.weight(.heavy)).foregroundStyle(PM.orange)
                         Text("Food diary, body measurements and profile stay on this iPhone. Images are sent to the PRIMALMACRO AI service only when you choose to analyse them. No cross-device sync yet.")
                             .font(.caption).foregroundStyle(PM.secondary)
-                        Text("For adults 18+. Not for treating medical conditions or prescribing diets.")
+                        Text("Ages 13–17: food diary only, without calorie or weight-loss targets. Adult plan estimates are for ages 18+. Not medical advice.")
                             .font(.caption).foregroundStyle(PM.secondary)
                     }
                 }
-                Text("PRIMALMACRO v0.2")
+                Text("PRIMALMACRO · upcoming update")
                     .font(.caption2.weight(.medium)).foregroundStyle(PM.secondary)
                     .frame(maxWidth: .infinity)
             }
@@ -140,38 +152,52 @@ struct EditProfileView: View {
     @State private var activity: ActivityLevel = .moderate
     @State private var goal: FitnessGoal = .lose
 
+    private var isTeen: Bool { (13..<18).contains(Int(age) ?? 0) }
     private var valid: Bool {
-        guard let years = Int(age), let cm = Double(height), let kg = Double(weight) else { return false }
-        return (18...100).contains(years) && (120...240).contains(cm) && (30...400).contains(kg)
+        guard let years = Int(age), (13...100).contains(years) else { return false }
+        if years < 18 { return true }
+        guard let cm = Double(height), let kg = Double(weight) else { return false }
+        return (120...240).contains(cm) && (30...400).contains(kg)
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 19) {
-                    Text("BMR FORMULA").font(.caption.weight(.heavy)).foregroundStyle(PM.secondary)
-                    Picker("Formula", selection: $sex) {
-                        ForEach(FormulaSex.allCases) { Text($0.rawValue).tag($0) }
-                    }.pickerStyle(.segmented)
-                    HStack(spacing: 10) {
-                        PMField(title: "Age", value: $age, suffix: "yr")
+                    PMField(title: "Age", value: $age, suffix: "yr")
+                    if isTeen {
+                        Text("Ages 13–17 use the food diary without calorie or body-weight targets.")
+                            .font(.caption).foregroundStyle(PM.secondary)
+                    } else {
+                        Text("BMR FORMULA").font(.caption.weight(.heavy)).foregroundStyle(PM.secondary)
+                        Picker("Formula", selection: $sex) {
+                            ForEach(FormulaSex.allCases) { Text($0.rawValue).tag($0) }
+                        }.pickerStyle(.segmented)
                         PMField(title: "Height", value: $height, suffix: "cm")
+                        PMField(title: "Weight", value: $weight, suffix: "kg")
+                        Text("ACTIVITY").font(.caption.weight(.heavy)).foregroundStyle(PM.secondary)
+                        Picker("Activity", selection: $activity) {
+                            ForEach(ActivityLevel.allCases) { Text($0.rawValue).tag($0) }
+                        }
+                        .pickerStyle(.menu)
+                        Text("GOAL").font(.caption.weight(.heavy)).foregroundStyle(PM.secondary)
+                        Picker("Goal", selection: $goal) {
+                            ForEach(FitnessGoal.allCases) { Text($0.rawValue).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
                     }
-                    PMField(title: "Weight", value: $weight, suffix: "kg")
-                    Text("ACTIVITY").font(.caption.weight(.heavy)).foregroundStyle(PM.secondary)
-                    Picker("Activity", selection: $activity) {
-                        ForEach(ActivityLevel.allCases) { Text($0.rawValue).tag($0) }
-                    }
-                    .pickerStyle(.menu)
-                    Text("GOAL").font(.caption.weight(.heavy)).foregroundStyle(PM.secondary)
-                    Picker("Goal", selection: $goal) {
-                        ForEach(FitnessGoal.allCases) { Text($0.rawValue).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    PMLargeButton(title: "UPDATE TARGETS", enabled: valid) {
-                        guard let years = Int(age), let cm = Double(height), let kg = Double(weight) else { return }
-                        store.saveProfile(FitnessProfile(formulaSex: sex, age: years, heightCm: cm, weightKg: kg,
-                                                        activity: activity, goal: goal, targetWeightKg: nil))
+                    PMLargeButton(title: isTeen ? "SAVE AGE" : "UPDATE TARGETS", enabled: valid) {
+                        guard let years = Int(age), (13...100).contains(years) else { return }
+                        if years < 18 {
+                            store.saveProfile(FitnessProfile(formulaSex: nil, age: years,
+                                heightCm: nil, weightKg: nil, activity: .moderate, goal: .maintain,
+                                targetWeightKg: nil))
+                        } else {
+                            guard let cm = Double(height), let kg = Double(weight) else { return }
+                            store.saveProfile(FitnessProfile(formulaSex: sex, age: years,
+                                heightCm: cm, weightKg: kg, activity: activity, goal: goal,
+                                targetWeightKg: nil))
+                        }
                         dismiss()
                     }
                 }
@@ -184,8 +210,10 @@ struct EditProfileView: View {
         }
         .onAppear {
             guard let p = store.profile else { return }
-            sex = p.formulaSex; age = "\(p.age)"; height = p.heightCm.compactString
-            weight = p.weightKg.compactString; activity = p.activity; goal = p.goal
+            sex = p.formulaSex ?? .male; age = "\(p.age)"
+            height = p.heightCm?.compactString ?? ""
+            weight = p.weightKg?.compactString ?? ""
+            activity = p.activity; goal = p.goal
         }
     }
 }
