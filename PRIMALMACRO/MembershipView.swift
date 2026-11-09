@@ -8,14 +8,22 @@ import CryptoKit
 @MainActor
 final class AppleMemberSession: ObservableObject {
     @Published private(set) var signedIn = false
+    @Published private(set) var emailSubject: String?
     @Published var errorMessage: String?
     private let userIDKey = "primalmacro.apple.user.id"
 
-    var userID: String? { UserDefaults.standard.string(forKey: userIDKey) }
-
+    var userID: String? {
+        guard emailSubject == nil else { return nil }
+        return UserDefaults.standard.string(forKey: userIDKey)
+    }
+    var isEmailAccount: Bool { emailSubject != nil }
+    var accountSubject: String? {
+        guard signedIn else { return nil }
+        return emailSubject ?? userID
+    }
     var accountToken: UUID? {
-        guard let userID else { return nil }
-        var bytes = Array(SHA256.hash(data: Data("primalmacro.storekit.v1:\(userID)".utf8)).prefix(16))
+        guard let subject = accountSubject else { return nil }
+        var bytes = Array(SHA256.hash(data: Data("primalmacro.storekit.v1:\(subject)".utf8)).prefix(16))
         bytes[6] = (bytes[6] & 15) | 128
         bytes[8] = (bytes[8] & 63) | 128
         return UUID(uuid: (bytes[0], bytes[1], bytes[2], bytes[3],
@@ -25,14 +33,25 @@ final class AppleMemberSession: ObservableObject {
     }
 
     func restore() async {
+        if let saved = EmailCredentialVault.load() {
+            do {
+                let refreshed = try await FirebaseEmailAuth.refresh(saved)
+                try await completeEmailSignIn(refreshed)
+            } catch {
+                signedIn = false
+                emailSubject = nil
+                errorMessage = "Email session expired. Sign in again to continue."
+            }
+            return
+        }
         guard let id = UserDefaults.standard.string(forKey: userIDKey) else { return }
         do {
             let state = try await ASAuthorizationAppleIDProvider().credentialState(forUserID: id)
-            guard userID == id else { return }
+            guard UserDefaults.standard.string(forKey: userIDKey) == id else { return }
             signedIn = state == .authorized
             if state == .revoked || state == .notFound { signOut() }
         } catch {
-            if userID == id { signedIn = false }
+            signedIn = false
         }
     }
 
@@ -44,7 +63,9 @@ final class AppleMemberSession: ObservableObject {
                 errorMessage = "Apple did not return a valid sign-in credential."
                 return
             }
-            if userID != credential.user { ScannerSession.clear() }
+            if accountSubject != credential.user { ScannerSession.clear() }
+            EmailCredentialVault.clear()
+            emailSubject = nil
             UserDefaults.standard.set(credential.user, forKey: userIDKey)
             signedIn = true
             errorMessage = nil
@@ -55,9 +76,53 @@ final class AppleMemberSession: ObservableObject {
         }
     }
 
+    func emailSignIn(email: String, password: String) async throws {
+        let credentials = try await FirebaseEmailAuth.login(email: email, password: password)
+        try await completeEmailSignIn(credentials)
+    }
+
+    private func completeEmailSignIn(_ credentials: FirebaseCredential) async throws {
+        // The scanner server verifies Firebase's signed identity token and requires
+        // email_verified=true. Never trust local login state as proof of AI access.
+        let session = try await ScanClient.emailSession(identityToken: credentials.idToken)
+        try session.save()
+        do { try EmailCredentialVault.save(credentials) }
+        catch {
+            ScannerSession.clear()
+            throw error
+        }
+        UserDefaults.standard.removeObject(forKey: userIDKey)
+        emailSubject = "email:" + credentials.localId
+        signedIn = true
+        errorMessage = nil
+    }
+
+    func refreshEmailScannerSession() async throws {
+        guard let saved = EmailCredentialVault.load(),
+              let active = emailSubject,
+              active == "email:" + saved.userID else {
+            throw EmailAuthFailure.invalidCredentials
+        }
+        let refreshed = try await FirebaseEmailAuth.refresh(saved)
+        let session = try await ScanClient.emailSession(identityToken: refreshed.idToken)
+        try session.save()
+        try EmailCredentialVault.save(refreshed)
+    }
+
+    func deleteEmailAccount() async throws {
+        guard let saved = EmailCredentialVault.load() else {
+            throw EmailAuthFailure.invalidCredentials
+        }
+        let refreshed = try await FirebaseEmailAuth.refresh(saved)
+        try await FirebaseEmailAuth.deleteAccount(idToken: refreshed.idToken)
+        signOut()
+    }
+
     func signOut() {
         ScannerSession.clear()
+        EmailCredentialVault.clear()
         UserDefaults.standard.removeObject(forKey: userIDKey)
+        emailSubject = nil
         signedIn = false
     }
 }
