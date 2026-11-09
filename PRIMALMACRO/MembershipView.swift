@@ -370,7 +370,7 @@ private struct MembershipLandingView: View {
             .frame(maxWidth: .infinity)
         }
         .background(PM.background)
-        .offerCodeRedemption(isPresented: $showingOfferCodeSheet) { result in
+        .offerCodeRedemption(options: [], isPresented: $showingOfferCodeSheet) { result in
             Task { @MainActor in
                 switch result {
                 case .success(let verification):
