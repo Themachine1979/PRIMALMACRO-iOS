@@ -4,5 +4,7 @@
 <dict>
     <key>PMScannerEndpoint</key>
     <string>$(PM_SCANNER_ENDPOINT)</string>
+    <key>PMFirebaseAPIKey</key>
+    <string>$(PM_FIREBASE_API_KEY)</string>
 </dict>
 </plist>
