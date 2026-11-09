@@ -301,6 +301,7 @@ private struct MembershipLandingView: View {
     @State private var scannerChallenge: String?
     @State private var showingOfferCodeSheet = false
     @State private var showingEmailAccountSheet = false
+    @State private var meetsMinimumAge = false
 
     var body: some View {
         ScrollView {
@@ -353,6 +354,13 @@ private struct MembershipLandingView: View {
                 .background(PM.surface, in: RoundedRectangle(cornerRadius: 18))
 
                 if !member.signedIn {
+                    Toggle(isOn: $meetsMinimumAge) {
+                        Text("I confirm I am at least 13 years old")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(PM.secondary)
+                    }
+                    .toggleStyle(.switch)
+                    .tint(PM.orange)
                     SignInWithAppleButton(.signIn, onRequest: { request in
                         // Use the same Apple confirmation for the app and AI scanner.
                         // The challenge comes from our server and is verified before use.
@@ -366,6 +374,7 @@ private struct MembershipLandingView: View {
                         .signInWithAppleButtonStyle(.white)
                         .frame(height: 54)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .disabled(!meetsMinimumAge)
                     Text("Sign in securely with Apple to continue")
                         .font(.caption).foregroundStyle(PM.secondary)
                     Button {
@@ -377,7 +386,7 @@ private struct MembershipLandingView: View {
                     }
                     .buttonStyle(.bordered)
                     .tint(PM.orange)
-                    .disabled(!FirebaseEmailAuth.isConfigured)
+                    .disabled(!FirebaseEmailAuth.isConfigured || !meetsMinimumAge)
                     if !FirebaseEmailAuth.isConfigured {
                         Text("Email sign-in will be enabled after the authentication service is configured.")
                             .font(.caption)
