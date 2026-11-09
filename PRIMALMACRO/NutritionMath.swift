@@ -1,15 +1,18 @@
 import Foundation
 
-// General-adult estimates only. They are not a diagnosis, prescription or a
-// substitute for personalised advice. Young users and people with complex
-// nutritional requirements should not use this calculator.
+// Adult estimates only. Users aged 13–17 get diary-only nutrition tracking,
+// never the adult BMR calculator or weight-loss calorie targets.
 enum NutritionMath {
-    static func target(for profile: FitnessProfile) -> NutritionTarget {
-        let weight = max(30, min(400, profile.weightKg))
-        let height = max(120, min(240, profile.heightCm))
+    static func target(for profile: FitnessProfile) -> NutritionTarget? {
+        guard profile.isAdult,
+              let weightValue = profile.weightKg,
+              let heightValue = profile.heightCm,
+              let formulaSex = profile.formulaSex else { return nil }
+        let weight = max(30, min(400, weightValue))
+        let height = max(120, min(240, heightValue))
         let age = max(18, min(100, profile.age))
 
-        let sexAdjustment = profile.formulaSex == .male ? 5.0 : -161.0
+        let sexAdjustment = formulaSex == .male ? 5.0 : -161.0
         let bmr = (10 * weight) + (6.25 * height) - (5 * Double(age)) + sexAdjustment
         let maintenance = bmr * profile.activity.multiplier
         let adjustment: Double
