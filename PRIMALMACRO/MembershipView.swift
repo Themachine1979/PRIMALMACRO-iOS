@@ -288,6 +288,7 @@ struct MembershipGateView: View {
         }
         .task {
             await member.restore()
+            appStore.activateAccount(member.accountSubject)
             await plans.start()
             booting = false
         }
