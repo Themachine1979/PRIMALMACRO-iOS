@@ -30,7 +30,23 @@ struct HomeView: View {
                     Spacer()
                     Image(systemName: "flame.fill").font(.title).foregroundStyle(PM.orange)
                 }
-                if let target = store.targets {
+                if store.profile?.isTeen == true {
+                    PMPanel {
+                        VStack(alignment: .leading, spacing: 13) {
+                            Text("YOUR FOOD DIARY")
+                                .font(.caption.weight(.heavy)).foregroundStyle(PM.orange)
+                            Text("\(eaten.calories.formatted()) kcal logged today")
+                                .font(.title2.weight(.heavy))
+                            HStack(spacing: 12) {
+                                PMNumber(number: "\(Int(eaten.protein))", unit: "g", label: "Protein logged")
+                                PMNumber(number: "\(Int(eaten.carbs))", unit: "g", label: "Carbs logged")
+                                PMNumber(number: "\(Int(eaten.fat))", unit: "g", label: "Fat logged")
+                            }
+                            Text("Food totals only. No calorie budgets, weight-loss goals or target comparisons for ages 13–17.")
+                                .font(.caption).foregroundStyle(PM.secondary)
+                        }
+                    }
+                } else if let target = store.targets {
                     PMPanel {
                         VStack(spacing: 18) {
                             CalorieRing(consumed: eaten.calories, target: target.calories)
@@ -94,7 +110,7 @@ struct HomeView: View {
                         }
                     }
                 }
-                if let profile = store.profile {
+                if let profile = store.profile, profile.isAdult {
                     PMPanel {
                         VStack(alignment: .leading, spacing: 8) {
                             Label("THE MISSION", systemImage: "scope")
