@@ -316,7 +316,7 @@ private struct MembershipLandingView: View {
                 Text("FUEL THE BEAST")
                     .font(.system(size: 30, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
-                Text("SCAN FOOD · MASTER MACROS · TRACK PROGRESS")
+                Text("SCAN FOOD · LOG MACROS · TRACK YOUR NUTRITION")
                     .font(.caption.weight(.heavy))
                     .tracking(1)
                     .foregroundStyle(PM.orange)
@@ -414,9 +414,10 @@ private struct MembershipLandingView: View {
                 }
                 .tint(PM.orange)
                 .buttonStyle(.bordered)
+                .disabled(!member.signedIn)
                 .accessibilityHint("Opens Apple's secure subscription offer code redemption sheet")
                 if !member.signedIn {
-                    Text("After redeeming, sign in to link your subscription and enable AI scanning.")
+                    Text("Sign in first, then redeem your Apple subscription offer code.")
                         .font(.caption)
                         .foregroundStyle(PM.secondary)
                         .multilineTextAlignment(.center)
