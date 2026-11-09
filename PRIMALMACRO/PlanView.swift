@@ -4,8 +4,10 @@ import UIKit
 struct PlanView: View {
     @EnvironmentObject private var store: AppStore
     @EnvironmentObject private var member: AppleMemberSession
+    @EnvironmentObject private var plans: MembershipPlans
     @AppStorage("primalmacro.ai.photoConsent") private var photoConsent = false
     @State private var showEdit = false
+    @State private var showOfferCodeSheet = false
     @State private var showDeleteAlert = false
     @State private var showDeleteAccountAlert = false
     @State private var deletingAccount = false
@@ -65,6 +67,15 @@ struct PlanView: View {
                             UIApplication.shared.open(url)
                         }
                     }
+                    settingsButton("Redeem Offer Code", icon: "ticket.fill") {
+                        showOfferCodeSheet = true
+                    }
+                    if let message = plans.message {
+                        Text(message).font(.footnote).foregroundStyle(PM.secondary)
+                    }
+                    Text("Apple decides which subscription offers are available to your account, including if you're already subscribed.")
+                        .font(.caption)
+                        .foregroundStyle(PM.secondary)
                     settingsButton("Sign out", icon: "rectangle.portrait.and.arrow.right") { member.signOut() }
                     if member.isEmailAccount {
                         settingsButton("Delete my email account", icon: "person.crop.circle.badge.xmark") {
@@ -97,6 +108,16 @@ struct PlanView: View {
         }
         .background(PM.background)
         .sheet(isPresented: $showEdit) { EditProfileView() }
+        // The welcome screen is not displayed for subscribed members.
+        // Keep Apple's native redemption sheet accessible from Plan after sign-in.
+        .offerCodeRedemption(isPresented: $showOfferCodeSheet) { result in
+            switch result {
+            case .success:
+                Task { @MainActor in await plans.refreshEntitlement() }
+            case .failure:
+                plans.message = "Could not open Apple's offer redemption screen."
+            }
+        }
         .confirmationDialog("Delete your PRIMALMACRO email account and this phone's diary? This can't be undone.",
                             isPresented: $showDeleteAccountAlert, titleVisibility: .visible) {
             Button("Delete account and local data", role: .destructive) {
