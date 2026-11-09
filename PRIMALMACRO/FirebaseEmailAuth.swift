@@ -166,7 +166,8 @@ enum FirebaseEmailAuth {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        let encoded = stored.refreshToken.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let unreserved = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+        let encoded = stored.refreshToken.addingPercentEncoding(withAllowedCharacters: unreserved) ?? ""
         request.httpBody = Data("grant_type=refresh_token&refresh_token=\(encoded)".utf8)
         request.timeoutInterval = 20
         let (data, response): (Data, URLResponse)
