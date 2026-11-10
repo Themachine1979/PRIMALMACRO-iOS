@@ -37,6 +37,20 @@ struct NutritionTests {
         eighteenth.age = 18
         precondition(NutritionMath.target(for: eighteenth) != nil,
                      "18-year-old adult plan should be available")
-        print("PASS: adult BMR/maintenance, adult goals, no teen calorie targets")
+        // Regression: older diary files have no fasting fields and must still decode.
+        let legacy = AppData(profile: p, foods: [], weights: [])
+        let legacyJSON = try! JSONEncoder().encode(legacy)
+        let migrated = try! JSONDecoder().decode(AppData.self, from: legacyJSON)
+        precondition(migrated.fastingSessions == nil, "Old diary must decode without fasting data")
+        let start = Date(timeIntervalSince1970: 1000)
+        let complete = FastSession(startedAt: start, targetHours: 16,
+                                   endedAt: start.addingTimeInterval(16 * 3600))
+        precondition(complete.completedGoal, "16-hour goal completion regression")
+        precondition(complete.duration == 16 * 3600, "Completed fasting duration regression")
+        let early = FastSession(startedAt: start, targetHours: 16,
+                                endedAt: start.addingTimeInterval(15 * 3600))
+        precondition(!early.completedGoal, "Early stop must not count as completed")
+        precondition(!teen.isAdult && eighteenth.isAdult, "Fasting age gate regression")
+        print("PASS: nutrition, teen safety, fasting goal and legacy diary decoding")
     }
 }
