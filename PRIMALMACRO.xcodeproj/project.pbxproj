@@ -10,6 +10,8 @@
     B10000000000000000000001 /* MembershipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* MembershipView.swift */; };
     A2B2C2D2E2F2000000000001 /* FirebaseEmailAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B2C2D2E2F2000000000002 /* FirebaseEmailAuth.swift */; };
     A2B2C2D2E2F2000000000003 /* EmailAccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B2C2D2E2F2000000000004 /* EmailAccountView.swift */; };
+    FA5700000000000000000001 /* PrimalFastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA5700000000000000000002 /* PrimalFastView.swift */; };
+    FA5700000000000000000003 /* FastReminders.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA5700000000000000000004 /* FastReminders.swift */; };
     52EB1EBDECFA0F252328F50A /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EB0F3EB7EE9FECCC403D934 /* AppStore.swift */; };
     16F7B2CC4ABB9BAD0B1834B9 /* Design.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBE28C419942BEA9F20CDA12 /* Design.swift */; };
     201E2358DE03663C66F578B0 /* DiaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C1B509304E162F6D0F8C05 /* DiaryView.swift */; };
@@ -33,6 +35,8 @@
     B10000000000000000000002 /* MembershipView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MembershipView.swift; sourceTree = "<group>"; };
     A2B2C2D2E2F2000000000002 /* FirebaseEmailAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseEmailAuth.swift; sourceTree = "<group>"; };
     A2B2C2D2E2F2000000000004 /* EmailAccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailAccountView.swift; sourceTree = "<group>"; };
+    FA5700000000000000000002 /* PrimalFastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimalFastView.swift; sourceTree = "<group>"; };
+    FA5700000000000000000004 /* FastReminders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastReminders.swift; sourceTree = "<group>"; };
     4EB0F3EB7EE9FECCC403D934 /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
     CBE28C419942BEA9F20CDA12 /* Design.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Design.swift; sourceTree = "<group>"; };
     06C1B509304E162F6D0F8C05 /* DiaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryView.swift; sourceTree = "<group>"; };
@@ -58,6 +62,8 @@
 /* Begin PBXGroup section */
     E58918C284069AFFF2CF9E02 = {isa = PBXGroup; children = (157F658B111B8A10A285B183 /* PRIMALMACRO */, 4C90435B9C2A68F28C1039D7 /* Products */, ); sourceTree = "<group>"; };
     157F658B111B8A10A285B183 /* PRIMALMACRO */ = {isa = PBXGroup; children = (
+      FA5700000000000000000002 /* PrimalFastView.swift */,
+      FA5700000000000000000004 /* FastReminders.swift */,
       4EB0F3EB7EE9FECCC403D934 /* AppStore.swift */,
       CBE28C419942BEA9F20CDA12 /* Design.swift */,
       06C1B509304E162F6D0F8C05 /* DiaryView.swift */,
@@ -122,6 +128,8 @@
 
 /* Begin PBXSourcesBuildPhase section */
     3ECEE8DB1D900FED06C6FBC8 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
+      FA5700000000000000000001 /* PrimalFastView.swift in Sources */,
+      FA5700000000000000000003 /* FastReminders.swift in Sources */,
       52EB1EBDECFA0F252328F50A /* AppStore.swift in Sources */,
       16F7B2CC4ABB9BAD0B1834B9 /* Design.swift in Sources */,
       201E2358DE03663C66F578B0 /* DiaryView.swift in Sources */,
