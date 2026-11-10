@@ -37,7 +37,7 @@ workflows:
       - /tmp/xcodebuild_logs/*.log
 
   primalmacro-ios-testflight:
-    name: PRIMALMACRO - signed TestFlight archive
+    name: PRIMALMACRO v1.1 - signed TestFlight archive
     max_build_duration: 90
     instance_type: mac_mini_m2
     # This integration name must exactly match the API key name in
@@ -76,6 +76,9 @@ workflows:
           build = os.environ.get("PM_BUILD_NUMBER", "")
           if not re.fullmatch(r"[1-9][0-9]*", build):
               raise SystemExit("Enter an unused positive whole number in the Codemagic build number field")
+          source, versions = re.subn(r"MARKETING_VERSION = [0-9.]+;", "MARKETING_VERSION = 1.1;", source)
+          if versions != 2:
+              raise SystemExit("Expected marketing version 1.1 in both Xcode configurations")
           source, count = re.subn(r"CURRENT_PROJECT_VERSION = [0-9]+;", f"CURRENT_PROJECT_VERSION = {build};", source)
           if count != 2:
               raise SystemExit("Expected build number in both Xcode configurations")
@@ -84,6 +87,14 @@ workflows:
           placeholder = "PM_SCANNER_ENDPOINT_PLACEHOLDER"
           if source.count(placeholder) != 2:
               raise SystemExit("Expected scanner placeholder in both Xcode configurations")
+          # Firebase Web API keys are client-visible identifiers, not passwords.
+          # A missing key keeps email registration safely disabled in the app.
+          firebase_key = os.environ.get("PM_FIREBASE_API_KEY", "").strip()
+          if firebase_key and not re.fullmatch(r"[A-Za-z0-9_-]{30,80}", firebase_key):
+              raise SystemExit("PM_FIREBASE_API_KEY must be a valid Firebase Web API key")
+          if source.count("PM_FIREBASE_API_KEY_PLACEHOLDER") != 2:
+              raise SystemExit("Expected Firebase placeholder in both Xcode configurations")
+          source = source.replace("PM_FIREBASE_API_KEY_PLACEHOLDER", firebase_key or "PM_FIREBASE_API_KEY_PLACEHOLDER")
           project.write_text(source.replace(placeholder, url))
           PY
       - name: Apply Apple distribution provisioning profile
@@ -116,7 +127,7 @@ workflows:
 
   # MANUAL OPT-IN: do not run without explicit owner approval.
   primalmacro-ios-upload-internal:
-    name: PRIMALMACRO - upload to App Store Connect (manual)
+    name: PRIMALMACRO v1.1 - upload internal TestFlight (manual)
     max_build_duration: 90
     instance_type: mac_mini_m2
     # This integration name must exactly match the API key name in
@@ -166,6 +177,9 @@ workflows:
           build = os.environ.get("PM_BUILD_NUMBER", "")
           if not re.fullmatch(r"[1-9][0-9]*", build):
               raise SystemExit("Enter an unused positive whole number in the Codemagic build number field")
+          source, versions = re.subn(r"MARKETING_VERSION = [0-9.]+;", "MARKETING_VERSION = 1.1;", source)
+          if versions != 2:
+              raise SystemExit("Expected marketing version 1.1 in both Xcode configurations")
           source, count = re.subn(r"CURRENT_PROJECT_VERSION = [0-9]+;", f"CURRENT_PROJECT_VERSION = {build};", source)
           if count != 2:
               raise SystemExit("Expected build number in both Xcode configurations")
@@ -174,6 +188,14 @@ workflows:
           placeholder = "PM_SCANNER_ENDPOINT_PLACEHOLDER"
           if source.count(placeholder) != 2:
               raise SystemExit("Expected scanner placeholder in both Xcode configurations")
+          # Firebase Web API keys are client-visible identifiers, not passwords.
+          # A missing key keeps email registration safely disabled in the app.
+          firebase_key = os.environ.get("PM_FIREBASE_API_KEY", "").strip()
+          if firebase_key and not re.fullmatch(r"[A-Za-z0-9_-]{30,80}", firebase_key):
+              raise SystemExit("PM_FIREBASE_API_KEY must be a valid Firebase Web API key")
+          if source.count("PM_FIREBASE_API_KEY_PLACEHOLDER") != 2:
+              raise SystemExit("Expected Firebase placeholder in both Xcode configurations")
+          source = source.replace("PM_FIREBASE_API_KEY_PLACEHOLDER", firebase_key or "PM_FIREBASE_API_KEY_PLACEHOLDER")
           project.write_text(source.replace(placeholder, url))
           PY
       - name: Apply Apple distribution provisioning profile
@@ -216,7 +238,7 @@ workflows:
 
   # MANUAL APP STORE RELEASE: upload only with the owner's explicit approval.
   primalmacro-ios-upload-appstore:
-    name: PRIMALMACRO - App Store release IPA upload (manual)
+    name: PRIMALMACRO - v1.1 App Store IPA upload (manual, after v1.0 approval)
     max_build_duration: 90
     instance_type: mac_mini_m2
     # This integration name must exactly match the API key name in
@@ -254,7 +276,7 @@ workflows:
             echo "Missing native Xcode project in repository root."
             exit 1
           }
-      - name: Set App Store version 1.0, build number and scanner endpoint
+      - name: Set App Store version 1.1, build number and scanner endpoint
         script: |
           python3 - <<'PY'
           import os
@@ -266,9 +288,8 @@ workflows:
           build = os.environ.get("PM_BUILD_NUMBER", "")
           if not re.fullmatch(r"[1-9][0-9]*", build):
               raise SystemExit("Enter an unused positive whole number in the Codemagic build number field")
-          # Version shown on App Store Connect's release page is 1.0.
-          # Internal TestFlight releases remain 0.2.0 in the original workflows.
-          source, versions = re.subn(r"MARKETING_VERSION = [0-9.]+;", "MARKETING_VERSION = 1.0;", source)
+          # This workflow is for the NEXT update after Apple's existing 1.0 review.
+          source, versions = re.subn(r"MARKETING_VERSION = [0-9.]+;", "MARKETING_VERSION = 1.1;", source)
           if versions != 2:
               raise SystemExit("Expected marketing version in both Xcode configurations")
           source, count = re.subn(r"CURRENT_PROJECT_VERSION = [0-9]+;", f"CURRENT_PROJECT_VERSION = {build};", source)
@@ -279,6 +300,16 @@ workflows:
           placeholder = "PM_SCANNER_ENDPOINT_PLACEHOLDER"
           if source.count(placeholder) != 2:
               raise SystemExit("Expected scanner placeholder in both Xcode configurations")
+          # Firebase Web API keys are client-visible identifiers, not passwords.
+          # A missing key keeps email registration safely disabled in the app.
+          firebase_key = os.environ.get("PM_FIREBASE_API_KEY", "").strip()
+          if not firebase_key:
+              raise SystemExit("Firebase email/password must be configured before release: set PM_FIREBASE_API_KEY")
+          if firebase_key and not re.fullmatch(r"[A-Za-z0-9_-]{30,80}", firebase_key):
+              raise SystemExit("PM_FIREBASE_API_KEY must be a valid Firebase Web API key")
+          if source.count("PM_FIREBASE_API_KEY_PLACEHOLDER") != 2:
+              raise SystemExit("Expected Firebase placeholder in both Xcode configurations")
+          source = source.replace("PM_FIREBASE_API_KEY_PLACEHOLDER", firebase_key or "PM_FIREBASE_API_KEY_PLACEHOLDER")
           project.write_text(source.replace(placeholder, url))
           PY
       - name: Apply Apple distribution provisioning profile

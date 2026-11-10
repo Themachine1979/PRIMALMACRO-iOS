@@ -43,7 +43,7 @@ async function unseal(env, token, purpose) {
     if (claims.purpose !== purpose || !Number.isSafeInteger(claims.exp) || claims.exp <= now()) throw new Error();
     return claims;
   } catch {
-    throw new AccessError(401, 'Please confirm your Apple sign-in.');
+    throw new AccessError(401, 'Please sign in again.');
   }
 }
 
@@ -162,6 +162,85 @@ export async function session(env, input, state) {
     console.warn('PM_SESSION_STAGE: SESSION_SIGNING');
     throw new Error('Session signing unavailable');
   }
+}
+
+// Verify Firebase Authentication ID tokens directly against Google's RSA public keys.
+// A Firebase Web API key is public configuration, never a server-side password.
+// Only email-verified Firebase identities can obtain scanner sessions.
+let firebaseKeys;
+async function firebaseKey(kid) {
+  if (!firebaseKeys || firebaseKeys.expires < now()) {
+    let response;
+    try {
+      response = await fetch('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com', {
+        headers: { accept: 'application/json' },
+        redirect: 'manual',
+        signal: AbortSignal.timeout(10_000)
+      });
+    } catch {
+      throw new Error('Firebase public keys unavailable');
+    }
+    if (!response.ok) throw new Error('Firebase public keys unavailable');
+    let payload;
+    try { payload = await response.json(); }
+    catch { throw new Error('Firebase public keys unavailable'); }
+    if (!Array.isArray(payload?.keys) || !payload.keys.every(k => k && typeof k.kid === 'string')) {
+      throw new Error('Firebase public keys unavailable');
+    }
+    firebaseKeys = { keys: payload.keys, expires: now() + 300 };
+  }
+  return firebaseKeys.keys.find(k => k.kid === kid && k.kty === 'RSA' && k.alg === 'RS256');
+}
+
+export async function emailSession(env, input) {
+  const projectID = env.FIREBASE_PROJECT_ID;
+  if (typeof projectID !== 'string' || !/^[a-z][a-z0-9-]{3,60}$/.test(projectID)) {
+    throw new AccessError(503, 'Email sign-in is not configured yet.');
+  }
+  const token = input?.idToken;
+  if (typeof token !== 'string' || token.length < 100 || token.length > 8192) {
+    throw new AccessError(400, 'Missing email sign-in details.');
+  }
+  let header, claims, signature, signed;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) throw new Error();
+    header = parse(parts[0]);
+    claims = parse(parts[1]);
+    signature = decode(parts[2]);
+    signed = encoder.encode(parts[0] + '.' + parts[1]);
+    if (header.alg !== 'RS256' || typeof header.kid !== 'string' ||
+        claims.aud !== projectID ||
+        claims.iss !== 'https://securetoken.google.com/' + projectID ||
+        typeof claims.sub !== 'string' || !claims.sub || claims.sub.length > 128 ||
+        claims.email_verified !== true ||
+        !Number.isSafeInteger(claims.exp) || claims.exp <= now() ||
+        !Number.isSafeInteger(claims.iat) || claims.iat > now() + 30 ||
+        claims.iat < now() - 3700 ||
+        !Number.isSafeInteger(claims.auth_time) || claims.auth_time > now() + 30) {
+      throw new Error();
+    }
+  } catch {
+    throw new AccessError(401, 'Email sign-in could not be verified.');
+  }
+  const jwk = await firebaseKey(header.kid);
+  if (!jwk) throw new AccessError(401, 'Email sign-in could not be verified.');
+  let verified = false;
+  try {
+    const algo = { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' };
+    const key = await crypto.subtle.importKey('jwk', jwk, algo, false, ['verify']);
+    verified = await crypto.subtle.verify(algo, key, signature, signed);
+  } catch {
+    throw new Error('Firebase token verification unavailable');
+  }
+  if (!verified) throw new AccessError(401, 'Email sign-in could not be verified.');
+  // Shorter-lived than Apple sessions so password resets/deletions have a small
+  // residual scanner-session window. Never accept an unverified Firebase ID.
+  const exp = Math.min(now() + 3600, claims.exp);
+  return {
+    token: await seal(env, { purpose: 'session', sub: 'email:' + claims.sub, exp }),
+    expiresAt: exp
+  };
 }
 
 export async function authenticate(env, request) {

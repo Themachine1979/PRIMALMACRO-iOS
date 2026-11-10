@@ -4,18 +4,26 @@ import StoreKit
 import Combine
 import CryptoKit
 
-// PRIMALMACRO v0.2: Apple-only sign-in. Google can be added later.
+// PRIMALMACRO: Sign in with Apple or verified email/password accounts.
 @MainActor
 final class AppleMemberSession: ObservableObject {
     @Published private(set) var signedIn = false
+    @Published private(set) var emailSubject: String?
     @Published var errorMessage: String?
     private let userIDKey = "primalmacro.apple.user.id"
 
-    var userID: String? { UserDefaults.standard.string(forKey: userIDKey) }
-
+    var userID: String? {
+        guard emailSubject == nil else { return nil }
+        return UserDefaults.standard.string(forKey: userIDKey)
+    }
+    var isEmailAccount: Bool { emailSubject != nil }
+    var accountSubject: String? {
+        guard signedIn else { return nil }
+        return emailSubject ?? userID
+    }
     var accountToken: UUID? {
-        guard let userID else { return nil }
-        var bytes = Array(SHA256.hash(data: Data("primalmacro.storekit.v1:\(userID)".utf8)).prefix(16))
+        guard let subject = accountSubject else { return nil }
+        var bytes = Array(SHA256.hash(data: Data("primalmacro.storekit.v1:\(subject)".utf8)).prefix(16))
         bytes[6] = (bytes[6] & 15) | 128
         bytes[8] = (bytes[8] & 63) | 128
         return UUID(uuid: (bytes[0], bytes[1], bytes[2], bytes[3],
@@ -25,14 +33,25 @@ final class AppleMemberSession: ObservableObject {
     }
 
     func restore() async {
+        if let saved = EmailCredentialVault.load() {
+            do {
+                let refreshed = try await FirebaseEmailAuth.refresh(saved)
+                try await completeEmailSignIn(refreshed)
+            } catch {
+                signedIn = false
+                emailSubject = nil
+                errorMessage = "Email session expired. Sign in again to continue."
+            }
+            return
+        }
         guard let id = UserDefaults.standard.string(forKey: userIDKey) else { return }
         do {
             let state = try await ASAuthorizationAppleIDProvider().credentialState(forUserID: id)
-            guard userID == id else { return }
+            guard UserDefaults.standard.string(forKey: userIDKey) == id else { return }
             signedIn = state == .authorized
             if state == .revoked || state == .notFound { signOut() }
         } catch {
-            if userID == id { signedIn = false }
+            signedIn = false
         }
     }
 
@@ -44,7 +63,9 @@ final class AppleMemberSession: ObservableObject {
                 errorMessage = "Apple did not return a valid sign-in credential."
                 return
             }
-            if userID != credential.user { ScannerSession.clear() }
+            if accountSubject != credential.user { ScannerSession.clear() }
+            EmailCredentialVault.clear()
+            emailSubject = nil
             UserDefaults.standard.set(credential.user, forKey: userIDKey)
             signedIn = true
             errorMessage = nil
@@ -55,9 +76,53 @@ final class AppleMemberSession: ObservableObject {
         }
     }
 
+    func emailSignIn(email: String, password: String) async throws {
+        let credentials = try await FirebaseEmailAuth.login(email: email, password: password)
+        try await completeEmailSignIn(credentials)
+    }
+
+    private func completeEmailSignIn(_ credentials: FirebaseCredential) async throws {
+        // The scanner server verifies Firebase's signed identity token and requires
+        // email_verified=true. Never trust local login state as proof of AI access.
+        let session = try await ScanClient.emailSession(identityToken: credentials.idToken)
+        try session.save()
+        do { try EmailCredentialVault.save(credentials) }
+        catch {
+            ScannerSession.clear()
+            throw error
+        }
+        UserDefaults.standard.removeObject(forKey: userIDKey)
+        emailSubject = "email:" + credentials.localId
+        signedIn = true
+        errorMessage = nil
+    }
+
+    func refreshEmailScannerSession() async throws {
+        guard let saved = EmailCredentialVault.load(),
+              let active = emailSubject,
+              active == "email:" + saved.userID else {
+            throw EmailAuthFailure.invalidCredentials
+        }
+        let refreshed = try await FirebaseEmailAuth.refresh(saved)
+        let session = try await ScanClient.emailSession(identityToken: refreshed.idToken)
+        try session.save()
+        try EmailCredentialVault.save(refreshed)
+    }
+
+    func deleteEmailAccount() async throws {
+        guard let saved = EmailCredentialVault.load() else {
+            throw EmailAuthFailure.invalidCredentials
+        }
+        let refreshed = try await FirebaseEmailAuth.refresh(saved)
+        try await FirebaseEmailAuth.deleteAccount(idToken: refreshed.idToken)
+        signOut()
+    }
+
     func signOut() {
         ScannerSession.clear()
+        EmailCredentialVault.clear()
         UserDefaults.standard.removeObject(forKey: userIDKey)
+        emailSubject = nil
         signedIn = false
     }
 }
@@ -223,6 +288,7 @@ struct MembershipGateView: View {
         }
         .task {
             await member.restore()
+            appStore.activateAccount(member.accountSubject)
             await plans.start()
             booting = false
         }
@@ -233,6 +299,9 @@ private struct MembershipLandingView: View {
     @EnvironmentObject private var member: AppleMemberSession
     @EnvironmentObject private var plans: MembershipPlans
     @State private var scannerChallenge: String?
+    @State private var showingOfferCodeSheet = false
+    @State private var showingEmailAccountSheet = false
+    @State private var meetsMinimumAge = false
 
     var body: some View {
         ScrollView {
@@ -247,7 +316,7 @@ private struct MembershipLandingView: View {
                 Text("FUEL THE BEAST")
                     .font(.system(size: 30, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
-                Text("SCAN FOOD · MASTER MACROS · TRACK PROGRESS")
+                Text("SCAN FOOD · LOG MACROS · TRACK YOUR NUTRITION")
                     .font(.caption.weight(.heavy))
                     .tracking(1)
                     .foregroundStyle(PM.orange)
@@ -255,7 +324,7 @@ private struct MembershipLandingView: View {
                 PMPanel {
                     VStack(alignment: .leading, spacing: 11) {
                         Label("AI photo scanning: meals, menus and packaging", systemImage: "camera.viewfinder")
-                        Label("Personal daily calorie and protein targets", systemImage: "target")
+                        Label("Calorie and macro targets for adults; diary-only mode for ages 13–17", systemImage: "target")
                         Label("Nutrition diary and body-weight progress", systemImage: "chart.xyaxis.line")
                     }
                     .font(.subheadline.weight(.semibold))
@@ -285,6 +354,13 @@ private struct MembershipLandingView: View {
                 .background(PM.surface, in: RoundedRectangle(cornerRadius: 18))
 
                 if !member.signedIn {
+                    Toggle(isOn: $meetsMinimumAge) {
+                        Text("I confirm I am at least 13 years old")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(PM.secondary)
+                    }
+                    .toggleStyle(.switch)
+                    .tint(PM.orange)
                     SignInWithAppleButton(.signIn, onRequest: { request in
                         // Use the same Apple confirmation for the app and AI scanner.
                         // The challenge comes from our server and is verified before use.
@@ -298,8 +374,24 @@ private struct MembershipLandingView: View {
                         .signInWithAppleButtonStyle(.white)
                         .frame(height: 54)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .disabled(!meetsMinimumAge)
                     Text("Sign in securely with Apple to continue")
                         .font(.caption).foregroundStyle(PM.secondary)
+                    Button {
+                        showingEmailAccountSheet = true
+                    } label: {
+                        Label("CREATE ACCOUNT / SIGN IN WITH EMAIL", systemImage: "envelope.fill")
+                            .font(.subheadline.weight(.bold))
+                            .frame(maxWidth: .infinity, minHeight: 48)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(PM.orange)
+                    .disabled(!FirebaseEmailAuth.isConfigured || !meetsMinimumAge)
+                    if !FirebaseEmailAuth.isConfigured {
+                        Text("Email sign-in will be enabled after the authentication service is configured.")
+                            .font(.caption)
+                            .foregroundStyle(PM.secondary)
+                    }
                 } else {
                     PMLargeButton(
                         title: plans.product(plans.selectedID).map {
@@ -311,6 +403,24 @@ private struct MembershipLandingView: View {
                         guard let accountToken = member.accountToken else { return }
                         Task { await plans.purchase(accountToken: accountToken) }
                     }
+                }
+
+                Button {
+                    showingOfferCodeSheet = true
+                } label: {
+                    Label("Redeem Offer Code", systemImage: "ticket.fill")
+                        .font(.subheadline.weight(.bold))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .tint(PM.orange)
+                .buttonStyle(.bordered)
+                .disabled(!member.signedIn)
+                .accessibilityHint("Opens Apple's secure subscription offer code redemption sheet")
+                if !member.signedIn {
+                    Text("Sign in first, then redeem your Apple subscription offer code.")
+                        .font(.caption)
+                        .foregroundStyle(PM.secondary)
+                        .multilineTextAlignment(.center)
                 }
 
                 if let error = member.errorMessage {
@@ -341,7 +451,7 @@ private struct MembershipLandingView: View {
                     .multilineTextAlignment(.center)
                 Link("Terms of Use", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
                     .font(.caption)
-                Text("For adults 18+. Nutrition scans are estimates, not medical advice.")
+                Text("Ages 13–17: food diary without calorie or weight-loss targets. Adults can use estimated goal-based targets. AI estimates aren't medical advice.")
                     .font(.caption2)
                     .foregroundStyle(PM.secondary)
                     .multilineTextAlignment(.center)
@@ -352,6 +462,19 @@ private struct MembershipLandingView: View {
             .frame(maxWidth: .infinity)
         }
         .background(PM.background)
+        .sheet(isPresented: $showingEmailAccountSheet) {
+            EmailAccountView().environmentObject(member)
+        }
+        // The iOS 17-compatible sheet reports presentation, while StoreKit's
+        // Transaction.updates stream notifies us of redeemed purchases.
+        .offerCodeRedemption(isPresented: $showingOfferCodeSheet) { result in
+            switch result {
+            case .success:
+                Task { @MainActor in await plans.refreshEntitlement() }
+            case .failure:
+                plans.message = "Could not open Apple's offer redemption screen."
+            }
+        }
         .task {
             guard ScannerService.endpoint != nil else { return }
             // Failure here never prevents Apple account sign-in or purchasing.

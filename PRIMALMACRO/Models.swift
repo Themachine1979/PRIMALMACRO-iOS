@@ -40,13 +40,19 @@ enum FitnessGoal: String, CaseIterable, Codable, Identifiable {
 }
 
 struct FitnessProfile: Codable {
-    var formulaSex: FormulaSex
+    // Users 13–17 only need their age to use the food diary.
+    // Optional body measurements preserve privacy and prevent placeholder
+    // measurements from accidentally driving adult calorie calculations.
+    var formulaSex: FormulaSex?
     var age: Int
-    var heightCm: Double
-    var weightKg: Double
+    var heightCm: Double?
+    var weightKg: Double?
     var activity: ActivityLevel
     var goal: FitnessGoal
     var targetWeightKg: Double?
+
+    var isTeen: Bool { (13..<18).contains(age) }
+    var isAdult: Bool { age >= 18 }
 }
 
 struct NutritionTarget {
@@ -94,10 +100,24 @@ struct WeightEntry: Identifiable, Codable {
     var kg: Double
 }
 
+struct FastSession: Identifiable, Codable {
+    var id = UUID()
+    var startedAt = Date()
+    var targetHours: Int
+    var endedAt: Date? = nil
+
+    var goalDate: Date { startedAt.addingTimeInterval(TimeInterval(targetHours) * 3600) }
+    var duration: TimeInterval { max(0, (endedAt ?? Date()).timeIntervalSince(startedAt)) }
+    var completedGoal: Bool { endedAt.map { $0 >= goalDate } ?? false }
+}
+
 struct AppData: Codable {
     var profile: FitnessProfile?
     var foods: [FoodEntry] = []
     var weights: [WeightEntry] = []
+    // Optional fields preserve decoding of diaries saved by older app versions.
+    var fastingSessions: [FastSession]? = nil
+    var fastingRemindersEnabled: Bool? = nil
 }
 
 enum ScanMode: String, CaseIterable, Identifiable {

@@ -16,6 +16,9 @@ struct PrimalMacroApp: App {
                 .preferredColorScheme(.dark)
                 .tint(PM.orange)
                 .background { PM.background.ignoresSafeArea() }
+                .onChange(of: member.accountSubject) { _, subject in
+                    store.activateAccount(subject)
+                }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
                         Task {

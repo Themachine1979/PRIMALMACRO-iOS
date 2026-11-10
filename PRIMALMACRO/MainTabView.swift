@@ -1,10 +1,11 @@
 import SwiftUI
 
 enum PMTab: Hashable {
-    case home, diary, scan, progress, plan
+    case home, diary, scan, fast, plan
 }
 
 struct MainTabView: View {
+    @EnvironmentObject private var store: AppStore
     @State private var selected: PMTab = .home
 
     var body: some View {
@@ -18,9 +19,11 @@ struct MainTabView: View {
             ScannerView()
                 .tabItem { Label("Scan", systemImage: "camera.fill") }
                 .tag(PMTab.scan)
-            WeightProgressView()
-                .tabItem { Label("Progress", systemImage: "chart.xyaxis.line") }
-                .tag(PMTab.progress)
+            if store.profile?.isAdult == true {
+                PrimalFastView()
+                    .tabItem { Label("Fast", systemImage: "timer") }
+                    .tag(PMTab.fast)
+            }
             PlanView()
                 .tabItem { Label("Plan", systemImage: "slider.horizontal.3") }
                 .tag(PMTab.plan)
