@@ -7,6 +7,7 @@ struct PlanView: View {
     @EnvironmentObject private var plans: MembershipPlans
     @AppStorage("primalmacro.ai.photoConsent") private var photoConsent = false
     @State private var showEdit = false
+    @State private var showProgress = false
     @State private var showOfferCodeSheet = false
     @State private var showDeleteAlert = false
     @State private var showDeleteAccountAlert = false
@@ -62,6 +63,9 @@ struct PlanView: View {
                 }
                 VStack(spacing: 10) {
                     settingsButton(store.profile?.isTeen == true ? "Edit age" : "Edit profile & goal", icon: "person.crop.circle") { showEdit = true }
+                    if store.profile?.isAdult == true {
+                        settingsButton("Weight progress", icon: "chart.xyaxis.line") { showProgress = true }
+                    }
                     settingsButton("Manage subscription", icon: "creditcard.fill") {
                         if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
                             UIApplication.shared.open(url)
@@ -108,6 +112,16 @@ struct PlanView: View {
         }
         .background(PM.background)
         .sheet(isPresented: $showEdit) { EditProfileView() }
+        .sheet(isPresented: $showProgress) {
+            NavigationStack {
+                WeightProgressView()
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Done") { showProgress = false }
+                        }
+                    }
+            }
+        }
         // The welcome screen is not displayed for subscribed members.
         // Keep Apple's native redemption sheet accessible from Plan after sign-in.
         .offerCodeRedemption(isPresented: $showOfferCodeSheet) { result in
