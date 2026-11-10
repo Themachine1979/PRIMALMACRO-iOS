@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum PMTab: Hashable {
-    case home, diary, scan, progress, plan
+    case home, diary, scan, fast, plan
 }
 
 struct MainTabView: View {
@@ -20,9 +20,9 @@ struct MainTabView: View {
                 .tabItem { Label("Scan", systemImage: "camera.fill") }
                 .tag(PMTab.scan)
             if store.profile?.isAdult == true {
-                WeightProgressView()
-                    .tabItem { Label("Progress", systemImage: "chart.xyaxis.line") }
-                    .tag(PMTab.progress)
+                PrimalFastView()
+                    .tabItem { Label("Fast", systemImage: "timer") }
+                    .tag(PMTab.fast)
             }
             PlanView()
                 .tabItem { Label("Plan", systemImage: "slider.horizontal.3") }
