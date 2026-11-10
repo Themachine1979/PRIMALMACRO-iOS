@@ -308,7 +308,7 @@ private struct FastProgressRing: View {
                     .frame(width: 33, height: 33)
                     .background(PM.surface, in: Circle())
                     .overlay(Circle().stroke(milestone.color.opacity(0.5), lineWidth: 1))
-                    .position(x: 150 + cos(angle) * 132, y: 150 + sin(angle) * 132)
+                    .offset(x: cos(angle) * 132, y: sin(angle) * 132)
             }
         }
         .frame(width: 300, height: 300)
